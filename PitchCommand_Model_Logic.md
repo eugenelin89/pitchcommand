@@ -10,13 +10,13 @@ To build a lightweight, real-time pitch prediction engine that adapts to individ
 
 ## 📥 Input Features
 
-| Feature        | Description                                                  |
-| -------------- | ------------------------------------------------------------ |
-| Count          | Current pitch count (e.g., 1-2, 0-0)                         |
-| Pitch History  | Last 3–5 pitch types thrown                                  |
-| Pitch Location | Optional – pitch zone (e.g., low in, high away)              |
-| Pitch Result   | Optional – outcome (strike, ball, hit, etc.)                 |
-| Pitcher ID     | Identifies the active pitcher for per-pitcher model updating |
+| Feature        | Description                                                  | FastAPI Type  |
+| -------------- | ------------------------------------------------------------ | ------------- |
+| Count          | Current pitch count (e.g., 1-2, 0-0)                         | str           |
+| Pitch History  | Last 3–5 pitch types thrown                                  | List[str]     |
+| Pitch Location | Optional – pitch zone (e.g., low in, high away)              | Optional[str] |
+| Pitch Result   | Optional – outcome (strike, ball, hit, etc.)                 | Optional[str] |
+| Pitcher ID     | Identifies the active pitcher for per-pitcher model updating | str           |
 
 ---
 
@@ -25,6 +25,7 @@ To build a lightweight, real-time pitch prediction engine that adapts to individ
 - **Model**: Markov Chain or Simple Bayesian Predictor
 - **Why**: Fast to implement, requires minimal training data, interpretable, updates in real-time
 - **Unit of Learning**: Transition probabilities between pitch types based on pitch context (e.g., count and last pitch type)
+- **Implementation**: Python class with FastAPI dependency injection
 
 ---
 
@@ -52,8 +53,10 @@ To build a lightweight, real-time pitch prediction engine that adapts to individ
   1. Update transition table with new example
   2. Recompute distribution if necessary (for smoothing)
   3. Update model state per pitcher (in-memory or file/db)
+  4. Trigger background task for model persistence
 
 - Use Laplace smoothing (add-one) to avoid zero-probability bias early on
+- Implement as FastAPI background task for non-blocking updates
 
 ---
 
@@ -62,6 +65,7 @@ To build a lightweight, real-time pitch prediction engine that adapts to individ
 - Models are maintained **per pitcher**
 - Each pitcher ID has its own transition table and prediction state
 - Model accuracy and sequencing tendencies evolve over time
+- Models stored in SQLite/PostgreSQL with Redis caching layer
 
 ---
 
@@ -72,16 +76,17 @@ To build a lightweight, real-time pitch prediction engine that adapts to individ
   - Rank of actual pitch in predicted list
 - Log overall model accuracy per session and per pitcher
 - Visualize performance trends over time
+- Expose metrics via FastAPI endpoints for monitoring
 
 ---
 
 ## ⚠️ Edge Case Handling
 
-| Case                 | Handling Strategy                                                    |
-| -------------------- | -------------------------------------------------------------------- |
-| First few pitches    | Use global average probabilities or default priors                   |
-| Unseen count + pitch | Use nearest known count or fallback to unconditioned pitch frequency |
-| Incomplete history   | Allow prediction with fewer than 3 prior pitches                     |
+| Case                 | Handling Strategy                                                    | FastAPI Implementation                    |
+| -------------------- | -------------------------------------------------------------------- | ----------------------------------------- |
+| First few pitches    | Use global average probabilities or default priors                   | Default values in Pydantic models         |
+| Unseen count + pitch | Use nearest known count or fallback to unconditioned pitch frequency | Custom validation in FastAPI dependencies |
+| Incomplete history   | Allow prediction with fewer than 3 prior pitches                     | Optional fields in request models         |
 
 ---
 
@@ -91,15 +96,51 @@ To build a lightweight, real-time pitch prediction engine that adapts to individ
 - Include pitch location and batter handedness
 - Trainable RNN or BiLSTM + attention for deeper sequence modeling
 - Model confidence calibration based on sequence entropy
+- GPU acceleration for complex models
+- Distributed training support
+
+---
+
+## 🚀 FastAPI Integration
+
+### Model Service
+
+```python
+class PredictionService:
+    def __init__(self, db: Session):
+        self.db = db
+        self.cache = RedisCache()
+
+    async def predict(self, request: PredictionRequest) -> PredictionResponse:
+        # Implementation
+        pass
+
+    async def update_model(self, pitch_log: PitchLog) -> None:
+        # Implementation
+        pass
+```
+
+### API Endpoints
+
+```python
+@router.post("/predict")
+async def predict_pitch(
+    request: PredictionRequest,
+    prediction_service: PredictionService = Depends(get_prediction_service)
+) -> PredictionResponse:
+    return await prediction_service.predict(request)
+```
 
 ---
 
 ## Dependencies
 
-- Prediction Engine Module (Python)
-- Pitch Log Parser
-- Pitcher Profile Store (local or Firebase)
-- Model state serialization (per pitcher)
+- FastAPI for API endpoints
+- SQLAlchemy for database operations
+- Redis for caching
+- Pydantic for data validation
+- Background tasks for model updates
+- Monitoring and logging tools
 
 ---
 
@@ -108,5 +149,8 @@ To build a lightweight, real-time pitch prediction engine that adapts to individ
 - Must prioritize low latency for real-time use
 - Tradeoff between accuracy and explainability is OK at MVP stage
 - Should be testable in isolation with mock pitch logs
+- Use FastAPI's dependency injection for clean architecture
+- Implement proper error handling and logging
+- Consider rate limiting for prediction endpoints
 
 -
