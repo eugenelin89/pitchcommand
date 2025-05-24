@@ -1,14 +1,14 @@
-from typing import List
-
-from pydantic import AnyHttpUrl, BaseSettings
+from typing import List, Union
+from pydantic import AnyHttpUrl
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "PitchCommand"
+    PROJECT_NAME: str = "PitchCommand API"
     API_V1_STR: str = "/api/v1"
 
     # CORS Configuration
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = ["http://localhost:3000"]  # Frontend URL
+    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
 
     # Database Configuration
     SQLITE_URL: str = "sqlite:///./pitchcommand.db"
