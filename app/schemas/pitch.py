@@ -1,6 +1,8 @@
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
 from pydantic import BaseModel
+
 
 class PitchBase(BaseModel):
     pitcher_id: str
@@ -9,8 +11,10 @@ class PitchBase(BaseModel):
     location: Optional[str] = None
     result: str
 
+
 class PitchCreate(PitchBase):
     pass
+
 
 class Pitch(PitchBase):
     id: str
@@ -19,14 +23,17 @@ class Pitch(PitchBase):
     class Config:
         orm_mode = True
 
+
 class PredictionRequest(BaseModel):
     pitcher_id: str
     last_n_pitches: list[str]
     count: str
 
+
 class Prediction(BaseModel):
     pitch_type: str
     confidence: float
+
 
 class PredictionResponse(BaseModel):
     predictions: list[Prediction]

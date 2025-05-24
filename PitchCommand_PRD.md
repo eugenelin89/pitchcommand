@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD)
 
-**Product Name:** PitchCommand  
-**Prepared By:** [Your Name]  
+**Product Name:** PitchCommand
+**Prepared By:** [Your Name]
 **Date:** [Insert Date]
 
 ---

@@ -35,4 +35,4 @@ types-passlib==1.7.7.20240106
 
 # Code Quality
 bandit==1.7.7  # Security linter
-safety>=3.0.0  # Dependency vulnerability checker 
+safety>=3.0.0  # Dependency vulnerability checker

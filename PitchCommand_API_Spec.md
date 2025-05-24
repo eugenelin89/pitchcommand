@@ -18,8 +18,8 @@ This document defines the REST API endpoints for the PitchCommand MVP, built wit
 
 ### 1. `GET /pitchers`
 
-**Purpose:** Retrieve a list of saved pitcher profiles  
-**Request:** None  
+**Purpose:** Retrieve a list of saved pitcher profiles
+**Request:** None
 **Response:**
 
 ```json
@@ -51,7 +51,7 @@ class Pitcher(BaseModel):
 
 ### 2. `POST /pitchers`
 
-**Purpose:** Create a new pitcher profile  
+**Purpose:** Create a new pitcher profile
 **Request:**
 
 ```json
@@ -85,7 +85,7 @@ class PitcherCreate(BaseModel):
 
 ### 3. `POST /log`
 
-**Purpose:** Log a pitch and update the model  
+**Purpose:** Log a pitch and update the model
 **Request:**
 
 ```json
@@ -119,7 +119,7 @@ class PitchLog(BaseModel):
 
 ### 4. `POST /predict`
 
-**Purpose:** Get prediction for the next pitch  
+**Purpose:** Get prediction for the next pitch
 **Request:**
 
 ```json
@@ -162,7 +162,7 @@ class PredictionResponse(BaseModel):
 
 ### 5. `GET /summary/{pitcher_id}` _(Optional)_
 
-**Purpose:** Get summary stats for pitcher's session  
+**Purpose:** Get summary stats for pitcher's session
 **Response:**
 
 ```json
@@ -205,7 +205,7 @@ All endpoints return error responses in this format:
 
 ## 🔐 Authentication (Post-MVP)
 
-Currently no authentication required  
+Currently no authentication required
 Future: add token or API key to header
 
 ```http
