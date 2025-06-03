@@ -14,32 +14,44 @@ prediction_service = PredictionService()
 
 
 @router.post("/", response_model=Pitch)
-async def create_pitch(*, db: Session = Depends(get_db), pitch_in: PitchCreate):
-    # Get the last pitch for this pitcher to use as the last_pitch
-    last_pitch = db.query(PitchModel)\
-        .filter(PitchModel.pitcher_id == pitch_in.pitcher_id)\
-        .order_by(PitchModel.created_at.desc())\
-        .first()
-    
-    last_pitch_type = last_pitch.pitch_type.value if last_pitch else None
-    
-    pitch = PitchModel(id=str(uuid.uuid4()), **pitch_in.dict())
-    db.add(pitch)
-    db.commit()
-    db.refresh(pitch)
-
-    # Update prediction model with the correct sequence
-    await prediction_service.update_model(
+async def create_pitch(
+    pitch: PitchCreate,
+    db: Session = Depends(get_db)
+):
+    # Create the pitch
+    db_pitch = PitchModel(
+        id=str(uuid.uuid4()),
         pitcher_id=pitch.pitcher_id,
         count=pitch.count,
-        last_pitch=last_pitch_type,  # Use the previous pitch type
-        next_pitch=pitch.pitch_type.value,  # Use the current pitch type
+        pitch_type=pitch.pitch_type,
+        location=pitch.location,
         pitch_result=pitch.pitch_result,
         play_result=pitch.play_result,
         hitter_handedness=pitch.hitter_handedness
     )
-
-    return pitch
+    db.add(db_pitch)
+    db.commit()
+    db.refresh(db_pitch)
+    
+    # Get the last pitch for this pitcher
+    last_pitch = db.query(PitchModel).filter(
+        PitchModel.pitcher_id == pitch.pitcher_id
+    ).order_by(PitchModel.created_at.desc()).offset(1).first()
+    
+    # Update the prediction model
+    if last_pitch:
+        await prediction_service.update_model(
+            pitcher_id=pitch.pitcher_id,
+            count=pitch.count,
+            last_pitch=last_pitch.pitch_type,
+            next_pitch=pitch.pitch_type,
+            pitch_result=pitch.pitch_result,
+            play_result=pitch.play_result,
+            location=pitch.location,
+            hitter_handedness=pitch.hitter_handedness
+        )
+    
+    return db_pitch
 
 
 @router.get("/pitcher/{pitcher_id}", response_model=List[Pitch])

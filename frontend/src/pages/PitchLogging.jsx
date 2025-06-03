@@ -102,7 +102,7 @@ function PitchLogging({ pitcher, onPitcherChange }) {
       }
       
       const data = await response.json();
-      console.log('Received predictions:', data.predictions);
+      console.log('Received predictions with full data:', JSON.stringify(data.predictions, null, 2));
       setPredictions(data.predictions || []);
     } catch (error) {
       console.error('Error fetching predictions:', error);
@@ -419,12 +419,20 @@ function PitchLogging({ pitcher, onPitcherChange }) {
               predictions.map((pred, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  className="p-3 bg-gray-50 rounded-lg"
                 >
-                  <span className="font-medium">{PITCH_TYPE_DISPLAY[pred.pitch_type] || pred.pitch_type}</span>
-                  <span className="text-sm text-gray-600">
-                    {(pred.confidence * 100).toFixed(1)}%
-                  </span>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-medium">{PITCH_TYPE_DISPLAY[pred.pitch_type] || pred.pitch_type}</span>
+                    <span className="text-sm text-gray-600">
+                      {(pred.confidence * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  {pred.location && (
+                    <div className="flex justify-between items-center text-sm text-gray-600">
+                      <span>Location: {pred.location.replace('_', ' ')}</span>
+                      <span>{(pred.location_confidence * 100).toFixed(1)}%</span>
+                    </div>
+                  )}
                 </div>
               ))
             ) : (

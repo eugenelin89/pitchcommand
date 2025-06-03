@@ -64,6 +64,8 @@ class PredictionRequest(BaseModel):
 class Prediction(BaseModel):
     pitch_type: PitchType
     confidence: float = Field(..., ge=0.0, le=1.0)
+    location: Optional[str] = None
+    location_confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
 
 
 class PredictionResponse(BaseModel):

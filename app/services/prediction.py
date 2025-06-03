@@ -225,11 +225,53 @@ class PredictionService:
             for pitch in self.pitch_types:
                 combined_probs[pitch] = combined_probs[pitch] / total_prob
 
+        # Get location probabilities for each pitch type
+        location_probs = {}
+        for pitch in self.pitch_types:
+            # Get location transitions for this pitch type
+            location_transitions = db.query(TransitionTable).filter(
+                TransitionTable.pitcher_id == request.pitcher_id,
+                TransitionTable.next_pitch == pitch,
+                TransitionTable.hitter_handedness == request.hitter_handedness,
+                TransitionTable.location.isnot(None)
+            ).all()
+            
+            if location_transitions:
+                # Calculate location probabilities
+                location_counts = {}
+                total_locations = 0
+                for transition in location_transitions:
+                    if transition.location:  # Make sure location is not None
+                        location_counts[transition.location] = location_counts.get(transition.location, 0) + transition.transition_count
+                        total_locations += transition.transition_count
+                
+                if location_counts:  # Only if we have valid locations
+                    # Find most likely location
+                    most_likely_location = max(location_counts.items(), key=lambda x: x[1])
+                    location_probs[pitch] = {
+                        'location': most_likely_location[0],
+                        'confidence': most_likely_location[1] / total_locations
+                    }
+                else:
+                    location_probs[pitch] = None
+            else:
+                location_probs[pitch] = None
+
         # Create predictions for all pitch types
-        predictions = [
-            Prediction(pitch_type=PitchType(pitch), confidence=combined_probs[pitch])
-            for pitch in self.pitch_types
-        ]
+        predictions = []
+        for pitch in self.pitch_types:
+            prediction = Prediction(
+                pitch_type=PitchType(pitch),
+                confidence=combined_probs[pitch]
+            )
+            
+            # Add location prediction if available
+            if pitch in location_probs and location_probs[pitch]:
+                prediction.location = location_probs[pitch]['location']
+                prediction.location_confidence = location_probs[pitch]['confidence']
+            
+            predictions.append(prediction)
+            
         predictions.sort(key=lambda x: x.confidence, reverse=True)
 
         # Store prediction in history
@@ -252,6 +294,7 @@ class PredictionService:
         next_pitch: str,
         pitch_result: Optional[PitchResult] = None,
         play_result: Optional[PlayResult] = None,
+        location: Optional[str] = None,
         hitter_handedness: str = 'R'
     ):
         db = next(get_db())
@@ -269,7 +312,17 @@ class PredictionService:
         ]:
             count = "0-0"
             
-        self._update_transition_table(db, pitcher_id, count, last_pitch, next_pitch, pitch_result, play_result, None, hitter_handedness)
+        self._update_transition_table(
+            db, 
+            pitcher_id, 
+            count, 
+            last_pitch, 
+            next_pitch, 
+            pitch_result, 
+            play_result, 
+            location, 
+            hitter_handedness
+        )
 
         # Update accuracy tracking
         last_prediction = db.query(PredictionHistory).filter(
