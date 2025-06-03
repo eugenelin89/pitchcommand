@@ -291,7 +291,13 @@ class PredictionService:
         ).all()
         
         for transition in transitions:
-            pitch_counts[PitchType(transition.next_pitch)] += transition.transition_count
+            # Only count transitions with valid pitch types
+            try:
+                pitch_type = PitchType(transition.next_pitch)
+                pitch_counts[pitch_type] += transition.transition_count
+            except ValueError:
+                # Skip invalid pitch types
+                continue
 
         # Calculate prediction accuracy
         predictions = db.query(PredictionHistory).filter(
