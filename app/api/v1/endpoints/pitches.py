@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.pitch import Pitch as PitchModel
-from app.schemas.pitch import Pitch, PitchCreate
+from app.schemas.pitch import Pitch, PitchCreate, SessionSummary
 from app.services.prediction import PredictionService
 
 router = APIRouter()
@@ -24,8 +24,10 @@ async def create_pitch(*, db: Session = Depends(get_db), pitch_in: PitchCreate):
     await prediction_service.update_model(
         pitcher_id=pitch.pitcher_id,
         count=pitch.count,
-        last_pitch=pitch.pitch_type,  # This should be the previous pitch
-        next_pitch=pitch.pitch_type,
+        last_pitch=pitch.pitch_type.value,  # Convert enum to string
+        next_pitch=pitch.pitch_type.value,  # Convert enum to string
+        pitch_result=pitch.pitch_result,
+        play_result=pitch.play_result,
     )
 
     return pitch
@@ -43,3 +45,8 @@ def get_pitcher_pitches(
         .all()
     )
     return pitches
+
+
+@router.get("/pitcher/{pitcher_id}/summary", response_model=SessionSummary)
+async def get_pitcher_summary(pitcher_id: str):
+    return prediction_service.get_session_summary(pitcher_id)
