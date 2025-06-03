@@ -7,10 +7,7 @@ from app.db.base import Base
 
 class PitchType(str, enum.Enum):
     FB = "FB"  # Fastball
-    SL = "SL"  # Slider
-    CH = "CH"  # Changeup
     CB = "CB"  # Curveball
-    CT = "CT"  # Cutter
 
 class PitchResult(str, enum.Enum):
     SWINGING_STRIKE = "swinging_strike"

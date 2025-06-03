@@ -7,10 +7,7 @@ from pydantic import BaseModel, Field
 
 class PitchType(str, Enum):
     FB = "FB"  # Fastball
-    SL = "SL"  # Slider
-    CH = "CH"  # Changeup
     CB = "CB"  # Curveball
-    CT = "CT"  # Cutter
 
 
 class PitchResult(str, Enum):

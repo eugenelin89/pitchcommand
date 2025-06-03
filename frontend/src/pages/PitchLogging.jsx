@@ -5,19 +5,13 @@ import { ArrowPathIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 // Match backend enums exactly
 const PITCH_TYPES = {
   FB: 'FB',  // Fastball
-  SL: 'SL',  // Slider
-  CH: 'CH',  // Changeup
   CB: 'CB',  // Curveball
-  CT: 'CT',  // Cutter
 };
 
 // Display names for pitch types
 const PITCH_TYPE_DISPLAY = {
   FB: 'Fastball',
-  SL: 'Slider',
-  CH: 'Changeup',
   CB: 'Curveball',
-  CT: 'Cutter',
 };
 
 const PITCH_RESULTS = {
