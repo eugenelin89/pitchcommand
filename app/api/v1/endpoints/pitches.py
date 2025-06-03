@@ -15,17 +15,25 @@ prediction_service = PredictionService()
 
 @router.post("/", response_model=Pitch)
 async def create_pitch(*, db: Session = Depends(get_db), pitch_in: PitchCreate):
+    # Get the last pitch for this pitcher to use as the last_pitch
+    last_pitch = db.query(PitchModel)\
+        .filter(PitchModel.pitcher_id == pitch_in.pitcher_id)\
+        .order_by(PitchModel.created_at.desc())\
+        .first()
+    
+    last_pitch_type = last_pitch.pitch_type.value if last_pitch else None
+    
     pitch = PitchModel(id=str(uuid.uuid4()), **pitch_in.dict())
     db.add(pitch)
     db.commit()
     db.refresh(pitch)
 
-    # Update prediction model
+    # Update prediction model with the correct sequence
     await prediction_service.update_model(
         pitcher_id=pitch.pitcher_id,
         count=pitch.count,
-        last_pitch=pitch.pitch_type.value,  # Convert enum to string
-        next_pitch=pitch.pitch_type.value,  # Convert enum to string
+        last_pitch=last_pitch_type,  # Use the previous pitch type
+        next_pitch=pitch.pitch_type.value,  # Use the current pitch type
         pitch_result=pitch.pitch_result,
         play_result=pitch.play_result,
     )

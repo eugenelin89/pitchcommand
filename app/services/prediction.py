@@ -15,11 +15,24 @@ from app.schemas.pitch import (
 
 
 class PredictionService:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(PredictionService, cls).__new__(cls)
+            cls._instance.transition_tables = {}
+            cls._instance.accuracy_history = {}
+            cls._instance.pitch_types = [pt.value for pt in PitchType]
+            cls._instance.prediction_history = {}
+        return cls._instance
+
     def __init__(self):
-        self.transition_tables: Dict[str, Dict[str, Dict[str, float]]] = {}
-        self.accuracy_history: Dict[str, List[bool]] = {}
-        self.pitch_types = [pt.value for pt in PitchType]
-        self.prediction_history: Dict[str, List[Prediction]] = {}
+        # Initialize only if not already initialized
+        if not hasattr(self, 'transition_tables'):
+            self.transition_tables = {}
+            self.accuracy_history = {}
+            self.pitch_types = [pt.value for pt in PitchType]
+            self.prediction_history = {}
 
     def _get_or_create_transition_table(
         self, pitcher_id: str, count: str
@@ -29,50 +42,79 @@ class PredictionService:
             self.accuracy_history[pitcher_id] = []
             self.prediction_history[pitcher_id] = []
 
-        if count not in self.transition_tables[pitcher_id]:
-            # Initialize with uniform probabilities
-            self.transition_tables[pitcher_id][count] = {
-                pitch: {
-                    next_pitch: 1.0 / len(self.pitch_types)
-                    for next_pitch in self.pitch_types
+        # Initialize the global transition table if it doesn't exist
+        if 'global' not in self.transition_tables[pitcher_id]:
+            self.transition_tables[pitcher_id]['global'] = {
+                'transitions': {
+                    pitch: {next_pitch: 0 for next_pitch in self.pitch_types}
+                    for pitch in self.pitch_types
+                },
+                'probabilities': {
+                    pitch: {next_pitch: 1.0 / len(self.pitch_types) for next_pitch in self.pitch_types}
+                    for pitch in self.pitch_types
                 }
-                for pitch in self.pitch_types
             }
 
-        return self.transition_tables[pitcher_id][count]
+        # Initialize the count-specific table if it doesn't exist
+        if count not in self.transition_tables[pitcher_id]:
+            self.transition_tables[pitcher_id][count] = {
+                'transitions': {
+                    pitch: {next_pitch: 0 for next_pitch in self.pitch_types}
+                    for pitch in self.pitch_types
+                },
+                'probabilities': {
+                    pitch: {next_pitch: 1.0 / len(self.pitch_types) for next_pitch in self.pitch_types}
+                    for pitch in self.pitch_types
+                }
+            }
+
+        print(f"\nDebug - Current transition tables for {pitcher_id}:")
+        print(f"Global table: {self.transition_tables[pitcher_id]['global']['probabilities']}")
+        print(f"Count-specific table ({count}): {self.transition_tables[pitcher_id][count]['probabilities']}")
+
+        return self.transition_tables[pitcher_id]
 
     def _update_transition_table(
         self, pitcher_id: str, count: str, last_pitch: str, next_pitch: str
     ):
-        table = self._get_or_create_transition_table(pitcher_id, count)
+        if not last_pitch:  # Handle first pitch case
+            return
 
-        # Laplace smoothing
-        alpha = 1.0
-        total = sum(table[last_pitch].values()) + alpha * len(self.pitch_types)
+        # Ensure last_pitch and next_pitch are strings
+        last_pitch = str(last_pitch)
+        next_pitch = str(next_pitch)
 
-        # Update probabilities
-        for pitch in self.pitch_types:
-            if pitch == next_pitch:
-                table[last_pitch][pitch] = (table[last_pitch][pitch] + alpha) / total
-            else:
-                table[last_pitch][pitch] = table[last_pitch][pitch] / total
+        tables = self._get_or_create_transition_table(pitcher_id, count)
+        
+        # Update both global and count-specific tables
+        for table_key in ['global', count]:
+            table = tables[table_key]
+            
+            # Update the transition count
+            table['transitions'][last_pitch][next_pitch] += 1
+            
+            # Calculate total transitions from last_pitch
+            total_transitions = sum(table['transitions'][last_pitch].values())
+            
+            print(f"\nUpdating {table_key} probabilities for {pitcher_id}")
+            print(f"Last pitch: {last_pitch}, Next pitch: {next_pitch}")
+            print(f"Transition counts: {table['transitions'][last_pitch]}")
+            print(f"Total transitions: {total_transitions}")
+            
+            # Update probabilities for all pitches
+            for pitch in self.pitch_types:
+                count = table['transitions'][last_pitch][pitch]
+                table['probabilities'][last_pitch][pitch] = count / total_transitions if total_transitions > 0 else 1.0 / len(self.pitch_types)
+            
+            print(f"Updated probabilities: {table['probabilities'][last_pitch]}\n")
 
     def _handle_edge_cases(self, request: PredictionRequest) -> Optional[List[Prediction]]:
-        # Handle first few pitches
+        # Only handle the case of no pitch history
         if not request.last_n_pitches:
             return [
                 Prediction(pitch_type=PitchType(pt), confidence=1.0 / len(self.pitch_types))
                 for pt in self.pitch_types
             ]
-
-        # Handle unseen count + pitch combination
-        if request.count not in self.transition_tables.get(request.pitcher_id, {}):
-            # Use nearest known count or fallback to unconditioned pitch frequency
-            return [
-                Prediction(pitch_type=PitchType(pt), confidence=1.0 / len(self.pitch_types))
-                for pt in self.pitch_types
-            ]
-
         return None
 
     async def predict(self, request: PredictionRequest) -> PredictionResponse:
@@ -81,23 +123,37 @@ class PredictionService:
         if edge_case_predictions:
             return PredictionResponse(predictions=edge_case_predictions)
 
-        table = self._get_or_create_transition_table(request.pitcher_id, request.count)
+        tables = self._get_or_create_transition_table(request.pitcher_id, request.count)
         last_pitch = request.last_n_pitches[-1]
-        probabilities = table[last_pitch]
+        # Extract just the pitch type value from the enum string (e.g., 'PitchType.FB' -> 'FB')
+        last_pitch = str(last_pitch).split('.')[-1]
 
-        # Sort by probability and get top 3
-        sorted_predictions = sorted(
-            probabilities.items(), key=lambda x: x[1], reverse=True
-        )[:3]
+        print(f"\nDebug - Transition tables for {request.pitcher_id}:")
+        print(f"Global table: {tables['global']['probabilities']}")
+        print(f"Count-specific table ({request.count}): {tables[request.count]['probabilities']}")
 
+        # Get probabilities from the transition tables
+        global_probs = tables['global']['probabilities'][last_pitch]
+        count_probs = tables[request.count]['probabilities'][last_pitch]
+
+        # Combine probabilities with more weight on count-specific
+        combined_probs = {}
+        for pitch in self.pitch_types:
+            combined_probs[pitch] = 0.7 * count_probs[pitch] + 0.3 * global_probs[pitch]
+
+        print(f"\nMaking prediction for {request.pitcher_id} at count {request.count}")
+        print(f"Last pitch: {last_pitch}")
+        print(f"Global probabilities: {global_probs}")
+        print(f"Count-specific probabilities: {count_probs}")
+        print(f"Combined probabilities: {combined_probs}\n")
+
+        # Create predictions for all pitch types
         predictions = [
-            Prediction(pitch_type=PitchType(pitch), confidence=prob)
-            for pitch, prob in sorted_predictions
+            Prediction(pitch_type=PitchType(pitch), confidence=combined_probs[pitch])
+            for pitch in self.pitch_types
         ]
-
-        # Store prediction history
+        predictions.sort(key=lambda x: x.confidence, reverse=True)
         self.prediction_history[request.pitcher_id].append(predictions[0])
-
         return PredictionResponse(predictions=predictions)
 
     async def update_model(
@@ -109,6 +165,10 @@ class PredictionService:
         pitch_result: Optional[PitchResult] = None,
         play_result: Optional[PlayResult] = None,
     ):
+        # If the play result is a home run, reset the count to 0-0
+        if play_result == PlayResult.HOMERUN:
+            count = "0-0"
+            
         self._update_transition_table(pitcher_id, count, last_pitch, next_pitch)
 
         # Update accuracy tracking
@@ -127,7 +187,7 @@ class PredictionService:
         # Calculate pitch distribution
         pitch_counts = {pt: 0 for pt in PitchType}
         for count_table in self.transition_tables[pitcher_id].values():
-            for last_pitch, next_pitches in count_table.items():
+            for last_pitch, next_pitches in count_table['transitions'].items():
                 for next_pitch, prob in next_pitches.items():
                     pitch_counts[PitchType(next_pitch)] += 1
 

@@ -58,13 +58,15 @@ function PitchLogging({ pitcher, onPitcherChange }) {
       // Only send valid pitch types from the history
       const validPitchHistory = pitchHistory
         .filter(pitch => Object.values(PITCH_TYPES).includes(pitch))
-        .slice(-3);
+        .slice(-3);  // Send last 3 pitches
 
       // Don't fetch predictions if we don't have any valid pitches
       if (validPitchHistory.length === 0) {
         setPredictions([]);
         return;
       }
+
+      console.log('Sending prediction request with history:', validPitchHistory);
 
       const response = await fetch('http://localhost:8000/api/v1/predict', {
         method: 'POST',
@@ -86,6 +88,7 @@ function PitchLogging({ pitcher, onPitcherChange }) {
       }
       
       const data = await response.json();
+      console.log('Received predictions:', data.predictions);
       setPredictions(data.predictions || []);
     } catch (error) {
       console.error('Error fetching predictions:', error);
@@ -142,10 +145,12 @@ function PitchLogging({ pitcher, onPitcherChange }) {
       
       const data = await response.json();
       
-      // Only add valid pitch types to history
-      if (Object.values(PITCH_TYPES).includes(formData.pitch_type)) {
-        setPitchHistory(prev => [...prev, formData.pitch_type]);
-      }
+      // Update pitch history with the new pitch
+      setPitchHistory(prev => {
+        const newHistory = [...prev, formData.pitch_type];
+        // Keep only the last 5 pitches
+        return newHistory.slice(-5);
+      });
       
       setFormData({
         pitch_type: '',
@@ -178,6 +183,40 @@ function PitchLogging({ pitcher, onPitcherChange }) {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const renderStrikeZone = () => {
+    const rows = ['high', 'middle', 'low'];
+    const cols = ['in', 'middle', 'away'];
+    
+    return (
+      <div className="w-48 mx-auto aspect-[4/3] border-2 border-gray-400 rounded-lg overflow-hidden">
+        <div className="grid grid-rows-3 grid-cols-3 h-full">
+          {rows.map((row) =>
+            cols.map((col) => {
+              const location = `${row}_${col}`;
+              const isSelected = formData.location === location;
+              return (
+                <button
+                  key={location}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, location })}
+                  className={`
+                    border border-gray-300 transition-colors
+                    ${isSelected ? 'bg-primary-600 text-white' : 'bg-white hover:bg-gray-50'}
+                    ${row === 'high' ? 'border-t-0' : ''}
+                    ${row === 'low' ? 'border-b-0' : ''}
+                    ${col === 'in' ? 'border-l-0' : ''}
+                    ${col === 'away' ? 'border-r-0' : ''}
+                  `}
+                  title={location.replace('_', ' ')}
+                />
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -256,19 +295,11 @@ function PitchLogging({ pitcher, onPitcherChange }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Location</label>
-              <select
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="input mt-1"
-              >
-                <option value="">Select location</option>
-                {LOCATIONS.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc.replace('_', ' ')}
-                  </option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+              {renderStrikeZone()}
+              <div className="mt-2 text-sm text-gray-500 text-center">
+                {formData.location ? formData.location.replace('_', ' ') : 'Select a location'}
+              </div>
             </div>
 
             <div>
