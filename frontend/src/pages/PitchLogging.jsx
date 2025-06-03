@@ -277,6 +277,38 @@ function PitchLogging({ pitcher, onPitcherChange }) {
     );
   };
 
+  const renderPredictionStrikeZone = (location) => {
+    const rows = ['high', 'middle', 'low'];
+    const cols = ['in', 'middle', 'away'];
+    
+    return (
+      <div className="w-32 aspect-[4/3] border-2 border-gray-400 rounded-lg overflow-hidden">
+        <div className="grid grid-rows-3 grid-cols-3 h-full">
+          {rows.map((row) =>
+            cols.map((col) => {
+              const zoneLocation = `${row}_${col}`;
+              const isSelected = location === zoneLocation;
+              return (
+                <div
+                  key={zoneLocation}
+                  className={`
+                    border border-gray-300 transition-colors
+                    ${isSelected ? 'bg-primary-600' : 'bg-white'}
+                    ${row === 'high' ? 'border-t-0' : ''}
+                    ${row === 'low' ? 'border-b-0' : ''}
+                    ${col === 'in' ? 'border-l-0' : ''}
+                    ${col === 'away' ? 'border-r-0' : ''}
+                  `}
+                  title={zoneLocation.replace('_', ' ')}
+                />
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -421,16 +453,21 @@ function PitchLogging({ pitcher, onPitcherChange }) {
                   key={index}
                   className="p-3 bg-gray-50 rounded-lg"
                 >
-                  <div className="flex justify-between items-center mb-1">
+                  <div className="flex justify-between items-center mb-2">
                     <span className="font-medium">{PITCH_TYPE_DISPLAY[pred.pitch_type] || pred.pitch_type}</span>
                     <span className="text-sm text-gray-600">
                       {(pred.confidence * 100).toFixed(1)}%
                     </span>
                   </div>
                   {pred.location && (
-                    <div className="flex justify-between items-center text-sm text-gray-600">
-                      <span>Location: {pred.location.replace('_', ' ')}</span>
-                      <span>{(pred.location_confidence * 100).toFixed(1)}%</span>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <div className="text-sm text-gray-600 mb-1">Predicted Location</div>
+                        {renderPredictionStrikeZone(pred.location)}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Confidence: {(pred.location_confidence * 100).toFixed(1)}%
+                      </div>
                     </div>
                   )}
                 </div>
