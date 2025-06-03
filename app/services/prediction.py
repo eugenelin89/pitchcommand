@@ -165,8 +165,17 @@ class PredictionService:
         pitch_result: Optional[PitchResult] = None,
         play_result: Optional[PlayResult] = None,
     ):
-        # If the play result is a home run, reset the count to 0-0
-        if play_result == PlayResult.HOMERUN:
+        # Reset count to 0-0 after any out or when the at-bat ends
+        if play_result in [
+            PlayResult.GROUNDOUT,
+            PlayResult.FLYOUT,
+            PlayResult.HOMERUN,
+            PlayResult.SINGLE,
+            PlayResult.DOUBLE,
+            PlayResult.TRIPLE,
+            PlayResult.ERROR,
+            PlayResult.SACRIFICE
+        ]:
             count = "0-0"
             
         self._update_transition_table(pitcher_id, count, last_pitch, next_pitch)
