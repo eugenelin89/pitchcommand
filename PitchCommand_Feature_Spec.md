@@ -11,9 +11,9 @@ This document details the functional breakdown of each MVP feature described in 
 | Field | Description |
 |-------|-------------|
 | Feature | Manual pitch entry by user |
-| Inputs | Count (e.g., 0-1), pitch type (FB, CH, SL, etc.), location (dropdown or zone chart), result (strike, ball, hit) |
-| Outputs | Pitch record object added to pitcher’s current session |
-| Notes | Designed for rapid input; must support mobile use and quick entry during live games |
+| Inputs | Count (e.g., 0-1), pitch type (FB, CH, SL, etc.), location (dropdown or zone chart), pitch_result (e.g., swinging_strike, foul, ball), play_result (e.g., flyout_RF, single_LF, home_run_CF) |
+| Outputs | Pitch record object added to pitcher’s current session. Updated pitch log with detailed outcomes for post-session analysis |
+| Notes | Designed for rapid input; must support mobile use and quick entry during live games. These fields allow tracking of command and pitch effectiveness, not just sequencing. Enables training use case in addition to scouting.  |
 
 ---
 
@@ -74,6 +74,17 @@ This document details the functional breakdown of each MVP feature described in 
 | Inputs | Pitcher selection dropdown; pitcher metadata; pitch logs per pitcher |
 | Outputs | Segmented session data per pitcher |
 | Notes | All views and model logic must be context-sensitive to the selected pitcher |
+
+---
+
+## 8. Effectiveness Analysis (Future Feature)
+
+| Field | Description |
+|-------|-------------|
+| Feature | Analyze pitch effectiveness based on result and sequence |
+| Inputs | `pitch_result`, `play_result`, pitch history |
+| Outputs | Metrics like whiff %, groundball %, hard contact %, effectiveness by sequence |
+| Notes | Supports coach training workflows and post-session review; could feed into AI pitch suggestion system |
 
 ---
 

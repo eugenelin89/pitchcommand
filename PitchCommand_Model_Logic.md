@@ -154,3 +154,17 @@ async def predict_pitch(
 - Consider rate limiting for prediction endpoints
 
 -
+
+## 🧪 Future Effectiveness Modeling (Optional)
+
+To assess pitch quality and command, future versions of the model can incorporate `pitch_result` and `play_result` into training and feedback loops.
+
+### Potential Use Cases:
+- Calculate whiff %, groundball %, or flyball % by pitch type and sequence.
+- Weight transition probabilities by success (e.g., strikeout or weak contact).
+- Visualize effectiveness heatmaps for each pitcher.
+
+### Implementation Notes:
+- Store granular result data in `PitchLog`.
+- Update model evaluation routines to track outcomes in context.
+- May require separate effectiveness models or reinforcement-style learning.

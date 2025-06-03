@@ -30,7 +30,8 @@ Represents a single pitch thrown during a session.
   "count": "1-2",               // Current pitch count
   "pitch_type": "SL",           // e.g., FB, SL, CH
   "location": "low_away",       // Optional – zone string
-  "result": "strike",           // strike, ball, hit, foul
+  "pitch_result": "swinging_strike",    // e.g., swinging_strike, called_strike, foul, ball, in_play
+  "play_result": "flyout_RF",           // Optional – e.g., flyout_RF, single_CF, double_LF, groundout_SS
   "timestamp": "2024-05-20T19:44:00Z"
 }
 ```
