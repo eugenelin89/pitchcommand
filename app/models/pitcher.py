@@ -12,5 +12,7 @@ class Pitcher(Base):
     hand = Column(String)  # L or R
     age = Column(Integer)
 
-    # Relationship
+    # Relationships
     pitches = relationship("Pitch", back_populates="pitcher")
+    transition_tables = relationship("TransitionTable", back_populates="pitcher")
+    prediction_history = relationship("PredictionHistory", back_populates="pitcher")

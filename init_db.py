@@ -2,6 +2,7 @@ from app.db.base import Base
 from app.db.session import engine
 from app.models.pitcher import Pitcher
 from app.models.pitch import Pitch
+from app.models.prediction import TransitionTable, PredictionHistory
 
 def init_db():
     print("Creating database tables...")

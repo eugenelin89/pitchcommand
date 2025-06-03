@@ -1,6 +1,9 @@
 from typing import Dict, List, Optional
 import numpy as np
 from datetime import datetime
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from uuid import uuid4
 
 from app.core.config import settings
 from app.schemas.pitch import (
@@ -12,6 +15,10 @@ from app.schemas.pitch import (
     PlayResult,
     SessionSummary,
 )
+from app.models.prediction import TransitionTable, PredictionHistory
+from app.db.session import get_db
+from app.models.pitcher import Pitcher
+from app.models.pitch import Pitch
 
 
 class PredictionService:
@@ -20,93 +27,86 @@ class PredictionService:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(PredictionService, cls).__new__(cls)
-            cls._instance.transition_tables = {}
-            cls._instance.accuracy_history = {}
             cls._instance.pitch_types = [pt.value for pt in PitchType]
-            cls._instance.prediction_history = {}
         return cls._instance
 
     def __init__(self):
         # Initialize only if not already initialized
-        if not hasattr(self, 'transition_tables'):
-            self.transition_tables = {}
-            self.accuracy_history = {}
+        if not hasattr(self, 'pitch_types'):
             self.pitch_types = [pt.value for pt in PitchType]
-            self.prediction_history = {}
 
     def _get_or_create_transition_table(
-        self, pitcher_id: str, count: str
-    ) -> Dict[str, Dict[str, float]]:
-        if pitcher_id not in self.transition_tables:
-            self.transition_tables[pitcher_id] = {}
-            self.accuracy_history[pitcher_id] = []
-            self.prediction_history[pitcher_id] = []
+        self, db: Session, pitcher_id: str, count: str, last_pitch: str, next_pitch: str
+    ) -> TransitionTable:
+        # Try to find existing transition
+        transition = db.query(TransitionTable).filter(
+            TransitionTable.pitcher_id == pitcher_id,
+            TransitionTable.count == count,
+            TransitionTable.last_pitch == last_pitch,
+            TransitionTable.next_pitch == next_pitch
+        ).first()
 
-        # Initialize the global transition table if it doesn't exist
-        if 'global' not in self.transition_tables[pitcher_id]:
-            self.transition_tables[pitcher_id]['global'] = {
-                'transitions': {
-                    pitch: {next_pitch: 0 for next_pitch in self.pitch_types}
-                    for pitch in self.pitch_types
-                },
-                'probabilities': {
-                    pitch: {next_pitch: 1.0 / len(self.pitch_types) for next_pitch in self.pitch_types}
-                    for pitch in self.pitch_types
-                }
-            }
+        if not transition:
+            # Create new transition
+            transition = TransitionTable(
+                id=str(uuid4()),
+                pitcher_id=pitcher_id,
+                count=count,
+                last_pitch=last_pitch,
+                next_pitch=next_pitch,
+                transition_count=0,
+                probability=1.0 / len(self.pitch_types)
+            )
+            db.add(transition)
+            db.commit()
+            db.refresh(transition)
 
-        # Initialize the count-specific table if it doesn't exist
-        if count not in self.transition_tables[pitcher_id]:
-            self.transition_tables[pitcher_id][count] = {
-                'transitions': {
-                    pitch: {next_pitch: 0 for next_pitch in self.pitch_types}
-                    for pitch in self.pitch_types
-                },
-                'probabilities': {
-                    pitch: {next_pitch: 1.0 / len(self.pitch_types) for next_pitch in self.pitch_types}
-                    for pitch in self.pitch_types
-                }
-            }
-
-        print(f"\nDebug - Current transition tables for {pitcher_id}:")
-        print(f"Global table: {self.transition_tables[pitcher_id]['global']['probabilities']}")
-        print(f"Count-specific table ({count}): {self.transition_tables[pitcher_id][count]['probabilities']}")
-
-        return self.transition_tables[pitcher_id]
+        return transition
 
     def _update_transition_table(
-        self, pitcher_id: str, count: str, last_pitch: str, next_pitch: str
-    ):
-        if not last_pitch:  # Handle first pitch case
-            return
-
-        # Ensure last_pitch and next_pitch are strings
-        last_pitch = str(last_pitch)
-        next_pitch = str(next_pitch)
-
-        tables = self._get_or_create_transition_table(pitcher_id, count)
+        self,
+        db: Session,
+        pitcher_id: str,
+        count: str,
+        last_pitch: str,
+        next_pitch: str
+    ) -> None:
+        """Update transition table with new pitch data."""
+        # Get or create transition table entry
+        transition = self._get_or_create_transition_table(
+            db, pitcher_id, count, last_pitch, next_pitch
+        )
         
-        # Update both global and count-specific tables
-        for table_key in ['global', count]:
-            table = tables[table_key]
-            
-            # Update the transition count
-            table['transitions'][last_pitch][next_pitch] += 1
-            
-            # Calculate total transitions from last_pitch
-            total_transitions = sum(table['transitions'][last_pitch].values())
-            
-            print(f"\nUpdating {table_key} probabilities for {pitcher_id}")
-            print(f"Last pitch: {last_pitch}, Next pitch: {next_pitch}")
-            print(f"Transition counts: {table['transitions'][last_pitch]}")
-            print(f"Total transitions: {total_transitions}")
-            
-            # Update probabilities for all pitches
-            for pitch in self.pitch_types:
-                count = table['transitions'][last_pitch][pitch]
-                table['probabilities'][last_pitch][pitch] = count / total_transitions if total_transitions > 0 else 1.0 / len(self.pitch_types)
-            
-            print(f"Updated probabilities: {table['probabilities'][last_pitch]}\n")
+        # Update transition count
+        transition.transition_count += 1
+        
+        # Calculate total transitions from last_pitch
+        total_transitions = db.query(TransitionTable).filter(
+            TransitionTable.pitcher_id == pitcher_id,
+            TransitionTable.count == count,
+            TransitionTable.last_pitch == last_pitch
+        ).with_entities(func.sum(TransitionTable.transition_count)).scalar() or 0
+        
+        # Update probabilities for all transitions from last_pitch
+        transitions = db.query(TransitionTable).filter(
+            TransitionTable.pitcher_id == pitcher_id,
+            TransitionTable.count == count,
+            TransitionTable.last_pitch == last_pitch
+        ).all()
+        
+        # Handle division by zero case
+        if total_transitions == 0:
+            uniform_prob = 1.0 / len(self.pitch_types)
+            for t in transitions:
+                t.probability = uniform_prob
+        else:
+            for t in transitions:
+                t.probability = t.transition_count / total_transitions
+        
+        # Update timestamp
+        transition.updated_at = datetime.utcnow()
+        
+        db.commit()
 
     def _handle_edge_cases(self, request: PredictionRequest) -> Optional[List[Prediction]]:
         # Only handle the case of no pitch history
@@ -123,29 +123,54 @@ class PredictionService:
         if edge_case_predictions:
             return PredictionResponse(predictions=edge_case_predictions)
 
-        tables = self._get_or_create_transition_table(request.pitcher_id, request.count)
+        db = next(get_db())
         last_pitch = request.last_n_pitches[-1]
         # Extract just the pitch type value from the enum string (e.g., 'PitchType.FB' -> 'FB')
         last_pitch = str(last_pitch).split('.')[-1]
 
-        print(f"\nDebug - Transition tables for {request.pitcher_id}:")
-        print(f"Global table: {tables['global']['probabilities']}")
-        print(f"Count-specific table ({request.count}): {tables[request.count]['probabilities']}")
+        # Get probabilities from both tables
+        global_probs = {}
+        count_probs = {}
+        
+        # Get global probabilities
+        global_transitions = db.query(TransitionTable).filter(
+            TransitionTable.pitcher_id == request.pitcher_id,
+            TransitionTable.count == 'global',
+            TransitionTable.last_pitch == last_pitch
+        ).all()
+        
+        for transition in global_transitions:
+            global_probs[transition.next_pitch] = transition.probability
 
-        # Get probabilities from the transition tables
-        global_probs = tables['global']['probabilities'][last_pitch]
-        count_probs = tables[request.count]['probabilities'][last_pitch]
+        # Get count-specific probabilities
+        count_transitions = db.query(TransitionTable).filter(
+            TransitionTable.pitcher_id == request.pitcher_id,
+            TransitionTable.count == request.count,
+            TransitionTable.last_pitch == last_pitch
+        ).all()
+        
+        for transition in count_transitions:
+            count_probs[transition.next_pitch] = transition.probability
+
+        # Initialize missing probabilities with uniform distribution
+        uniform_prob = 1.0 / len(self.pitch_types)
+        for pitch in self.pitch_types:
+            if pitch not in global_probs:
+                global_probs[pitch] = uniform_prob
+            if pitch not in count_probs:
+                count_probs[pitch] = uniform_prob
 
         # Combine probabilities with more weight on count-specific
         combined_probs = {}
+        total_prob = 0.0
         for pitch in self.pitch_types:
             combined_probs[pitch] = 0.7 * count_probs[pitch] + 0.3 * global_probs[pitch]
-
-        print(f"\nMaking prediction for {request.pitcher_id} at count {request.count}")
-        print(f"Last pitch: {last_pitch}")
-        print(f"Global probabilities: {global_probs}")
-        print(f"Count-specific probabilities: {count_probs}")
-        print(f"Combined probabilities: {combined_probs}\n")
+            total_prob += combined_probs[pitch]
+        
+        # Normalize probabilities to ensure they sum to 1.0
+        if total_prob > 0:
+            for pitch in self.pitch_types:
+                combined_probs[pitch] = combined_probs[pitch] / total_prob
 
         # Create predictions for all pitch types
         predictions = [
@@ -153,7 +178,17 @@ class PredictionService:
             for pitch in self.pitch_types
         ]
         predictions.sort(key=lambda x: x.confidence, reverse=True)
-        self.prediction_history[request.pitcher_id].append(predictions[0])
+
+        # Store prediction in history
+        prediction_history = PredictionHistory(
+            id=str(uuid4()),
+            pitcher_id=request.pitcher_id,
+            predicted_pitch=predictions[0].pitch_type.value,
+            count=request.count
+        )
+        db.add(prediction_history)
+        db.commit()
+
         return PredictionResponse(predictions=predictions)
 
     async def update_model(
@@ -165,6 +200,8 @@ class PredictionService:
         pitch_result: Optional[PitchResult] = None,
         play_result: Optional[PlayResult] = None,
     ):
+        db = next(get_db())
+        
         # Reset count to 0-0 after any out or when the at-bat ends
         if play_result in [
             PlayResult.GROUNDOUT,
@@ -178,32 +215,38 @@ class PredictionService:
         ]:
             count = "0-0"
             
-        self._update_transition_table(pitcher_id, count, last_pitch, next_pitch)
+        self._update_transition_table(db, pitcher_id, count, last_pitch, next_pitch)
 
         # Update accuracy tracking
-        if self.prediction_history.get(pitcher_id):
-            last_prediction = self.prediction_history[pitcher_id][-1]
-            was_correct = last_prediction.pitch_type == PitchType(next_pitch)
-            self.accuracy_history[pitcher_id].append(was_correct)
+        last_prediction = db.query(PredictionHistory).filter(
+            PredictionHistory.pitcher_id == pitcher_id
+        ).order_by(PredictionHistory.created_at.desc()).first()
+
+        if last_prediction:
+            last_prediction.actual_pitch = next_pitch
+            last_prediction.was_correct = last_prediction.predicted_pitch == next_pitch
+            db.commit()
 
     def get_session_summary(self, pitcher_id: str) -> SessionSummary:
-        if pitcher_id not in self.transition_tables:
-            return SessionSummary(
-                pitch_distribution={pt: 0 for pt in PitchType},
-                prediction_accuracy=0.0
-            )
-
+        db = next(get_db())
+        
         # Calculate pitch distribution
         pitch_counts = {pt: 0 for pt in PitchType}
-        for count_table in self.transition_tables[pitcher_id].values():
-            for last_pitch, next_pitches in count_table['transitions'].items():
-                for next_pitch, prob in next_pitches.items():
-                    pitch_counts[PitchType(next_pitch)] += 1
+        transitions = db.query(TransitionTable).filter(
+            TransitionTable.pitcher_id == pitcher_id
+        ).all()
+        
+        for transition in transitions:
+            pitch_counts[PitchType(transition.next_pitch)] += transition.transition_count
 
         # Calculate prediction accuracy
+        predictions = db.query(PredictionHistory).filter(
+            PredictionHistory.pitcher_id == pitcher_id
+        ).all()
+        
         accuracy = 0.0
-        if self.accuracy_history.get(pitcher_id):
-            accuracy = sum(self.accuracy_history[pitcher_id]) / len(self.accuracy_history[pitcher_id])
+        if predictions:
+            accuracy = sum(1 for p in predictions if p.was_correct) / len(predictions)
 
         return SessionSummary(
             pitch_distribution=pitch_counts,
