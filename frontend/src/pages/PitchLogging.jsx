@@ -226,57 +226,59 @@ function PitchLogging({ pitcher, onPitcherChange }) {
     const cols = ['in', 'middle', 'away'];
     
     return (
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => setFormData({ ...formData, hitter_handedness: 'R' })}
-          className={`px-3 py-2 rounded ${
-            formData.hitter_handedness === 'R'
-              ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          Righty
-        </button>
-        
-        <div className="w-48 aspect-[4/3] border-2 border-gray-400 rounded-lg overflow-hidden">
-          <div className="grid grid-rows-3 grid-cols-3 h-full">
-            {rows.map((row) =>
-              cols.map((col) => {
-                const location = `${row}_${col}`;
-                const isSelected = formData.location === location;
-                return (
-                  <button
-                    key={location}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, location })}
-                    className={`
-                      border border-gray-300 transition-colors
-                      ${isSelected ? 'bg-primary-600 text-white' : 'bg-white hover:bg-gray-50'}
-                      ${row === 'high' ? 'border-t-0' : ''}
-                      ${row === 'low' ? 'border-b-0' : ''}
-                      ${col === 'in' ? 'border-l-0' : ''}
-                      ${col === 'away' ? 'border-r-0' : ''}
-                    `}
-                    title={location.replace('_', ' ')}
-                  />
-                );
-              })
-            )}
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setFormData({ ...formData, hitter_handedness: 'R' })}
+            className={`px-3 py-2 rounded ${
+              formData.hitter_handedness === 'R'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Righty
+          </button>
+          
+          <div className="w-48 aspect-[4/3] border-2 border-gray-400 rounded-lg overflow-hidden">
+            <div className="grid grid-rows-3 grid-cols-3 h-full">
+              {rows.map((row) =>
+                cols.map((col) => {
+                  const location = `${row}_${col}`;
+                  const isSelected = formData.location === location;
+                  return (
+                    <button
+                      key={location}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, location })}
+                      className={`
+                        border border-gray-300 transition-colors
+                        ${isSelected ? 'bg-primary-600 text-white' : 'bg-white hover:bg-gray-50'}
+                        ${row === 'high' ? 'border-t-0' : ''}
+                        ${row === 'low' ? 'border-b-0' : ''}
+                        ${col === 'in' ? 'border-l-0' : ''}
+                        ${col === 'away' ? 'border-r-0' : ''}
+                      `}
+                      title={location.replace('_', ' ')}
+                    />
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={() => setFormData({ ...formData, hitter_handedness: 'L' })}
-          className={`px-3 py-2 rounded ${
-            formData.hitter_handedness === 'L'
-              ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          Lefty
-        </button>
+          <button
+            type="button"
+            onClick={() => setFormData({ ...formData, hitter_handedness: 'L' })}
+            className={`px-3 py-2 rounded ${
+              formData.hitter_handedness === 'L'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Lefty
+          </button>
+        </div>
       </div>
     );
   };
@@ -359,8 +361,8 @@ function PitchLogging({ pitcher, onPitcherChange }) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
               {renderStrikeZone()}
-              <div className="mt-2 text-sm text-gray-500 text-center">
-                {formData.location ? formData.location.replace('_', ' ') : 'Select a location'}
+              <div className="mt-2 text-sm text-gray-500 text-center w-48 mx-auto">
+                {formData.location ? formData.location.replace('_', ' ') : 'Select a location (Catcher\'s View)'}
               </div>
             </div>
 
