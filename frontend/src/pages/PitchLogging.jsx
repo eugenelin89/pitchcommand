@@ -11,6 +11,15 @@ const PITCH_TYPES = {
   CT: 'CT',  // Cutter
 };
 
+// Display names for pitch types
+const PITCH_TYPE_DISPLAY = {
+  FB: 'Fastball',
+  SL: 'Slider',
+  CH: 'Changeup',
+  CB: 'Curveball',
+  CT: 'Cutter',
+};
+
 const PITCH_RESULTS = {
   SWINGING_STRIKE: 'swinging_strike',
   CALLED_STRIKE: 'called_strike',
@@ -161,7 +170,13 @@ function PitchLogging({ pitcher, onPitcherChange }) {
       
       // Update count
       const [balls, strikes] = count.split('-').map(Number);
-      if (formData.pitch_result === PITCH_RESULTS.BALL) {
+      
+      // Reset count to 0-0 for any play result
+      if (formData.play_result) {
+        setCount('0-0');
+      }
+      // Handle other pitch results
+      else if (formData.pitch_result === PITCH_RESULTS.BALL) {
         setCount(`${balls + 1}-${strikes}`);
       } else if ([PITCH_RESULTS.SWINGING_STRIKE, PITCH_RESULTS.CALLED_STRIKE].includes(formData.pitch_result)) {
         // If this would result in a strikeout, reset to 0-0
@@ -288,7 +303,7 @@ function PitchLogging({ pitcher, onPitcherChange }) {
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    {key}
+                    {PITCH_TYPE_DISPLAY[key]}
                   </button>
                 ))}
               </div>
@@ -304,37 +319,43 @@ function PitchLogging({ pitcher, onPitcherChange }) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Pitch Result</label>
-              <select
-                value={formData.pitch_result}
-                onChange={(e) => setFormData({ ...formData, pitch_result: e.target.value })}
-                className="input mt-1"
-                required
-              >
-                <option value="">Select result</option>
+              <div className="mt-1 grid grid-cols-2 gap-2">
                 {Object.entries(PITCH_RESULTS).map(([key, value]) => (
-                  <option key={value} value={value}>
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, pitch_result: value })}
+                    className={`p-2 rounded ${
+                      formData.pitch_result === value
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
                     {key.toLowerCase().replace('_', ' ')}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
             {formData.pitch_result === PITCH_RESULTS.IN_PLAY && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">Play Result</label>
-                <select
-                  value={formData.play_result}
-                  onChange={(e) => setFormData({ ...formData, play_result: e.target.value })}
-                  className="input mt-1"
-                  required
-                >
-                  <option value="">Select result</option>
+                <div className="mt-1 grid grid-cols-2 gap-2">
                   {Object.entries(PLAY_RESULTS).map(([key, value]) => (
-                    <option key={value} value={value}>
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, play_result: value })}
+                      className={`p-2 rounded ${
+                        formData.play_result === value
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
                       {key.toLowerCase().replace('_', ' ')}
-                    </option>
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
             )}
 
@@ -357,7 +378,7 @@ function PitchLogging({ pitcher, onPitcherChange }) {
                   key={index}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                 >
-                  <span className="font-medium">{pred.pitch_type}</span>
+                  <span className="font-medium">{PITCH_TYPE_DISPLAY[pred.pitch_type] || pred.pitch_type}</span>
                   <span className="text-sm text-gray-600">
                     {(pred.confidence * 100).toFixed(1)}%
                   </span>
@@ -378,7 +399,7 @@ function PitchLogging({ pitcher, onPitcherChange }) {
                   key={index}
                   className="px-3 py-1 bg-gray-100 rounded-full text-sm"
                 >
-                  {pitch}
+                  {PITCH_TYPE_DISPLAY[pitch] || pitch}
                 </div>
               ))}
             </div>
