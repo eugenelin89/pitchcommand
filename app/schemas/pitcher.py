@@ -1,14 +1,13 @@
 from typing import Optional
-
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class PitcherBase(BaseModel):
-    name: str
-    team: str
-    number: int
-    hand: str
-    age: int
+    name: str = Field(..., min_length=1, max_length=100)
+    team: str = Field(..., min_length=1, max_length=100)
+    number: int = Field(..., ge=0, le=99)
+    hand: str = Field(..., pattern="^[RL]$")
+    age: int = Field(..., ge=0, le=100)
 
 
 class PitcherCreate(PitcherBase):
@@ -17,6 +16,4 @@ class PitcherCreate(PitcherBase):
 
 class Pitcher(PitcherBase):
     id: str
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

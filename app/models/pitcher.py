@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import relationship
 
 from app.db.base import Base
 
@@ -10,3 +11,6 @@ class Pitcher(Base):
     number = Column(Integer)
     hand = Column(String)  # L or R
     age = Column(Integer)
+
+    # Relationship
+    pitches = relationship("Pitch", back_populates="pitcher")
