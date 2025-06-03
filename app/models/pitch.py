@@ -37,6 +37,7 @@ class Pitch(Base):
     location = Column(String, nullable=True)
     pitch_result = Column(Enum(PitchResult))
     play_result = Column(Enum(PlayResult), nullable=True)
+    hitter_handedness = Column(String)  # 'L' for lefty, 'R' for righty
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationship

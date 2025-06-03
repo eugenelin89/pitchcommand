@@ -44,7 +44,8 @@ class PredictionService:
         next_pitch: str,
         pitch_result: Optional[str] = None,
         play_result: Optional[str] = None,
-        location: Optional[str] = None
+        location: Optional[str] = None,
+        hitter_handedness: str = 'R'
     ) -> TransitionTable:
         # Try to find existing transition
         transition = db.query(TransitionTable).filter(
@@ -54,7 +55,8 @@ class PredictionService:
             TransitionTable.next_pitch == next_pitch,
             TransitionTable.pitch_result == pitch_result,
             TransitionTable.play_result == play_result,
-            TransitionTable.location == location
+            TransitionTable.location == location,
+            TransitionTable.hitter_handedness == hitter_handedness
         ).first()
 
         if not transition:
@@ -68,6 +70,7 @@ class PredictionService:
                 pitch_result=pitch_result,
                 play_result=play_result,
                 location=location,
+                hitter_handedness=hitter_handedness,
                 transition_count=0,
                 probability=1.0 / len(self.pitch_types)
             )
@@ -86,13 +89,14 @@ class PredictionService:
         next_pitch: str,
         pitch_result: Optional[str] = None,
         play_result: Optional[str] = None,
-        location: Optional[str] = None
+        location: Optional[str] = None,
+        hitter_handedness: str = 'R'
     ) -> None:
         """Update transition table with new pitch data."""
         # Get or create transition table entry
         transition = self._get_or_create_transition_table(
             db, pitcher_id, count, last_pitch, next_pitch,
-            pitch_result, play_result, location
+            pitch_result, play_result, location, hitter_handedness
         )
         
         # Update transition count
@@ -105,7 +109,8 @@ class PredictionService:
             TransitionTable.last_pitch == last_pitch,
             TransitionTable.pitch_result == pitch_result,
             TransitionTable.play_result == play_result,
-            TransitionTable.location == location
+            TransitionTable.location == location,
+            TransitionTable.hitter_handedness == hitter_handedness
         ).with_entities(func.sum(TransitionTable.transition_count)).scalar() or 0
         
         # Update probabilities for all transitions from last_pitch with same context
@@ -115,7 +120,8 @@ class PredictionService:
             TransitionTable.last_pitch == last_pitch,
             TransitionTable.pitch_result == pitch_result,
             TransitionTable.play_result == play_result,
-            TransitionTable.location == location
+            TransitionTable.location == location,
+            TransitionTable.hitter_handedness == hitter_handedness
         ).all()
         
         # Handle division by zero case
@@ -161,7 +167,8 @@ class PredictionService:
         global_transitions = db.query(TransitionTable).filter(
             TransitionTable.pitcher_id == request.pitcher_id,
             TransitionTable.count == 'global',
-            TransitionTable.last_pitch == last_pitch
+            TransitionTable.last_pitch == last_pitch,
+            TransitionTable.hitter_handedness == request.hitter_handedness
         ).all()
         
         for transition in global_transitions:
@@ -171,7 +178,8 @@ class PredictionService:
         count_transitions = db.query(TransitionTable).filter(
             TransitionTable.pitcher_id == request.pitcher_id,
             TransitionTable.count == request.count,
-            TransitionTable.last_pitch == last_pitch
+            TransitionTable.last_pitch == last_pitch,
+            TransitionTable.hitter_handedness == request.hitter_handedness
         ).all()
         
         for transition in count_transitions:
@@ -183,7 +191,8 @@ class PredictionService:
             TransitionTable.last_pitch == last_pitch,
             TransitionTable.pitch_result == request.last_pitch_result,
             TransitionTable.play_result == request.last_play_result,
-            TransitionTable.location == request.last_location
+            TransitionTable.location == request.last_location,
+            TransitionTable.hitter_handedness == request.hitter_handedness
         ).all()
         
         for transition in context_transitions:
@@ -243,6 +252,7 @@ class PredictionService:
         next_pitch: str,
         pitch_result: Optional[PitchResult] = None,
         play_result: Optional[PlayResult] = None,
+        hitter_handedness: str = 'R'
     ):
         db = next(get_db())
         
@@ -259,7 +269,7 @@ class PredictionService:
         ]:
             count = "0-0"
             
-        self._update_transition_table(db, pitcher_id, count, last_pitch, next_pitch)
+        self._update_transition_table(db, pitcher_id, count, last_pitch, next_pitch, pitch_result, play_result, None, hitter_handedness)
 
         # Update accuracy tracking
         last_prediction = db.query(PredictionHistory).filter(

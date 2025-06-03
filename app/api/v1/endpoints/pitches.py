@@ -36,6 +36,7 @@ async def create_pitch(*, db: Session = Depends(get_db), pitch_in: PitchCreate):
         next_pitch=pitch.pitch_type.value,  # Use the current pitch type
         pitch_result=pitch.pitch_result,
         play_result=pitch.play_result,
+        hitter_handedness=pitch.hitter_handedness
     )
 
     return pitch

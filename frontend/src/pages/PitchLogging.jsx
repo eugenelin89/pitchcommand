@@ -52,11 +52,13 @@ function PitchLogging({ pitcher, onPitcherChange }) {
     location: '',
     pitch_result: '',
     play_result: '',
+    hitter_handedness: 'R', // Default to right-handed
   });
   const [lastPitchContext, setLastPitchContext] = useState({
     pitch_result: null,
     play_result: null,
     location: null,
+    hitter_handedness: 'R',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -94,6 +96,7 @@ function PitchLogging({ pitcher, onPitcherChange }) {
           last_pitch_result: lastPitchContext.pitch_result,
           last_play_result: lastPitchContext.play_result,
           last_location: lastPitchContext.location,
+          hitter_handedness: lastPitchContext.hitter_handedness,
         }),
       });
       
@@ -126,6 +129,7 @@ function PitchLogging({ pitcher, onPitcherChange }) {
         pitch_type: formData.pitch_type,
         location: formData.location || null,
         pitch_result: formData.pitch_result,
+        hitter_handedness: formData.hitter_handedness,
         ...(formData.pitch_result === PITCH_RESULTS.IN_PLAY && formData.play_result
           ? { play_result: formData.play_result }
           : {}),
@@ -167,6 +171,7 @@ function PitchLogging({ pitcher, onPitcherChange }) {
         pitch_result: formData.pitch_result,
         play_result: formData.pitch_result === PITCH_RESULTS.IN_PLAY ? formData.play_result : null,
         location: formData.location,
+        hitter_handedness: formData.hitter_handedness,
       });
       
       // Update pitch history with the new pitch
@@ -181,6 +186,7 @@ function PitchLogging({ pitcher, onPitcherChange }) {
         location: '',
         pitch_result: '',
         play_result: '',
+        hitter_handedness: formData.hitter_handedness, // Keep the same handedness
       });
       
       // Update count
@@ -220,31 +226,57 @@ function PitchLogging({ pitcher, onPitcherChange }) {
     const cols = ['in', 'middle', 'away'];
     
     return (
-      <div className="w-48 mx-auto aspect-[4/3] border-2 border-gray-400 rounded-lg overflow-hidden">
-        <div className="grid grid-rows-3 grid-cols-3 h-full">
-          {rows.map((row) =>
-            cols.map((col) => {
-              const location = `${row}_${col}`;
-              const isSelected = formData.location === location;
-              return (
-                <button
-                  key={location}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, location })}
-                  className={`
-                    border border-gray-300 transition-colors
-                    ${isSelected ? 'bg-primary-600 text-white' : 'bg-white hover:bg-gray-50'}
-                    ${row === 'high' ? 'border-t-0' : ''}
-                    ${row === 'low' ? 'border-b-0' : ''}
-                    ${col === 'in' ? 'border-l-0' : ''}
-                    ${col === 'away' ? 'border-r-0' : ''}
-                  `}
-                  title={location.replace('_', ' ')}
-                />
-              );
-            })
-          )}
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => setFormData({ ...formData, hitter_handedness: 'R' })}
+          className={`px-3 py-2 rounded ${
+            formData.hitter_handedness === 'R'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Righty
+        </button>
+        
+        <div className="w-48 aspect-[4/3] border-2 border-gray-400 rounded-lg overflow-hidden">
+          <div className="grid grid-rows-3 grid-cols-3 h-full">
+            {rows.map((row) =>
+              cols.map((col) => {
+                const location = `${row}_${col}`;
+                const isSelected = formData.location === location;
+                return (
+                  <button
+                    key={location}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, location })}
+                    className={`
+                      border border-gray-300 transition-colors
+                      ${isSelected ? 'bg-primary-600 text-white' : 'bg-white hover:bg-gray-50'}
+                      ${row === 'high' ? 'border-t-0' : ''}
+                      ${row === 'low' ? 'border-b-0' : ''}
+                      ${col === 'in' ? 'border-l-0' : ''}
+                      ${col === 'away' ? 'border-r-0' : ''}
+                    `}
+                    title={location.replace('_', ' ')}
+                  />
+                );
+              })
+            )}
+          </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setFormData({ ...formData, hitter_handedness: 'L' })}
+          className={`px-3 py-2 rounded ${
+            formData.hitter_handedness === 'L'
+              ? 'bg-primary-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Lefty
+        </button>
       </div>
     );
   };

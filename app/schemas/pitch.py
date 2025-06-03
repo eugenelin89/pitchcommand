@@ -39,6 +39,7 @@ class PitchBase(BaseModel):
     location: Optional[str] = None
     pitch_result: PitchResult
     play_result: Optional[PlayResult] = None
+    hitter_handedness: str = Field(..., pattern=r"^[LR]$")  # L for lefty, R for righty
 
 
 class PitchCreate(PitchBase):
@@ -60,6 +61,7 @@ class PredictionRequest(BaseModel):
     last_pitch_result: Optional[PitchResult] = None
     last_play_result: Optional[PlayResult] = None
     last_location: Optional[str] = None
+    hitter_handedness: str = Field(..., pattern=r"^[LR]$")  # L for lefty, R for righty
 
 
 class Prediction(BaseModel):

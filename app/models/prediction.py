@@ -13,6 +13,7 @@ class TransitionTable(Base):
     pitch_result = Column(String, nullable=True)  # e.g., 'swinging_strike', 'ball', etc.
     play_result = Column(String, nullable=True)   # e.g., 'flyout', 'single', etc.
     location = Column(String, nullable=True)      # e.g., 'high_in', 'low_away', etc.
+    hitter_handedness = Column(String)            # 'L' for lefty, 'R' for righty
     transition_count = Column(Integer, default=0)
     probability = Column(Float)
     created_at = Column(DateTime, default=datetime.utcnow)
