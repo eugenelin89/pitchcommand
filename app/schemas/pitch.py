@@ -57,6 +57,9 @@ class PredictionRequest(BaseModel):
     pitcher_id: str
     last_n_pitches: List[PitchType]
     count: str = Field(..., pattern=r"^[0-3]-[0-2]$")
+    last_pitch_result: Optional[PitchResult] = None
+    last_play_result: Optional[PlayResult] = None
+    last_location: Optional[str] = None
 
 
 class Prediction(BaseModel):

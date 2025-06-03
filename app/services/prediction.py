@@ -36,14 +36,25 @@ class PredictionService:
             self.pitch_types = [pt.value for pt in PitchType]
 
     def _get_or_create_transition_table(
-        self, db: Session, pitcher_id: str, count: str, last_pitch: str, next_pitch: str
+        self,
+        db: Session,
+        pitcher_id: str,
+        count: str,
+        last_pitch: str,
+        next_pitch: str,
+        pitch_result: Optional[str] = None,
+        play_result: Optional[str] = None,
+        location: Optional[str] = None
     ) -> TransitionTable:
         # Try to find existing transition
         transition = db.query(TransitionTable).filter(
             TransitionTable.pitcher_id == pitcher_id,
             TransitionTable.count == count,
             TransitionTable.last_pitch == last_pitch,
-            TransitionTable.next_pitch == next_pitch
+            TransitionTable.next_pitch == next_pitch,
+            TransitionTable.pitch_result == pitch_result,
+            TransitionTable.play_result == play_result,
+            TransitionTable.location == location
         ).first()
 
         if not transition:
@@ -54,6 +65,9 @@ class PredictionService:
                 count=count,
                 last_pitch=last_pitch,
                 next_pitch=next_pitch,
+                pitch_result=pitch_result,
+                play_result=play_result,
+                location=location,
                 transition_count=0,
                 probability=1.0 / len(self.pitch_types)
             )
@@ -69,29 +83,39 @@ class PredictionService:
         pitcher_id: str,
         count: str,
         last_pitch: str,
-        next_pitch: str
+        next_pitch: str,
+        pitch_result: Optional[str] = None,
+        play_result: Optional[str] = None,
+        location: Optional[str] = None
     ) -> None:
         """Update transition table with new pitch data."""
         # Get or create transition table entry
         transition = self._get_or_create_transition_table(
-            db, pitcher_id, count, last_pitch, next_pitch
+            db, pitcher_id, count, last_pitch, next_pitch,
+            pitch_result, play_result, location
         )
         
         # Update transition count
         transition.transition_count += 1
         
-        # Calculate total transitions from last_pitch
+        # Calculate total transitions from last_pitch with same context
         total_transitions = db.query(TransitionTable).filter(
             TransitionTable.pitcher_id == pitcher_id,
             TransitionTable.count == count,
-            TransitionTable.last_pitch == last_pitch
+            TransitionTable.last_pitch == last_pitch,
+            TransitionTable.pitch_result == pitch_result,
+            TransitionTable.play_result == play_result,
+            TransitionTable.location == location
         ).with_entities(func.sum(TransitionTable.transition_count)).scalar() or 0
         
-        # Update probabilities for all transitions from last_pitch
+        # Update probabilities for all transitions from last_pitch with same context
         transitions = db.query(TransitionTable).filter(
             TransitionTable.pitcher_id == pitcher_id,
             TransitionTable.count == count,
-            TransitionTable.last_pitch == last_pitch
+            TransitionTable.last_pitch == last_pitch,
+            TransitionTable.pitch_result == pitch_result,
+            TransitionTable.play_result == play_result,
+            TransitionTable.location == location
         ).all()
         
         # Handle division by zero case
@@ -131,6 +155,7 @@ class PredictionService:
         # Get probabilities from both tables
         global_probs = {}
         count_probs = {}
+        context_probs = {}
         
         # Get global probabilities
         global_transitions = db.query(TransitionTable).filter(
@@ -152,6 +177,18 @@ class PredictionService:
         for transition in count_transitions:
             count_probs[transition.next_pitch] = transition.probability
 
+        # Get context-specific probabilities (pitch result, play result, location)
+        context_transitions = db.query(TransitionTable).filter(
+            TransitionTable.pitcher_id == request.pitcher_id,
+            TransitionTable.last_pitch == last_pitch,
+            TransitionTable.pitch_result == request.last_pitch_result,
+            TransitionTable.play_result == request.last_play_result,
+            TransitionTable.location == request.last_location
+        ).all()
+        
+        for transition in context_transitions:
+            context_probs[transition.next_pitch] = transition.probability
+
         # Initialize missing probabilities with uniform distribution
         uniform_prob = 1.0 / len(self.pitch_types)
         for pitch in self.pitch_types:
@@ -159,12 +196,19 @@ class PredictionService:
                 global_probs[pitch] = uniform_prob
             if pitch not in count_probs:
                 count_probs[pitch] = uniform_prob
+            if pitch not in context_probs:
+                context_probs[pitch] = uniform_prob
 
-        # Combine probabilities with more weight on count-specific
+        # Combine probabilities with weights
+        # Count-specific: 40%, Context-specific: 40%, Global: 20%
         combined_probs = {}
         total_prob = 0.0
         for pitch in self.pitch_types:
-            combined_probs[pitch] = 0.7 * count_probs[pitch] + 0.3 * global_probs[pitch]
+            combined_probs[pitch] = (
+                0.4 * count_probs[pitch] +
+                0.4 * context_probs[pitch] +
+                0.2 * global_probs[pitch]
+            )
             total_prob += combined_probs[pitch]
         
         # Normalize probabilities to ensure they sum to 1.0

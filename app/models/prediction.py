@@ -10,6 +10,9 @@ class TransitionTable(Base):
     count = Column(String)  # 'global' or specific count like '0-0'
     last_pitch = Column(String)
     next_pitch = Column(String)
+    pitch_result = Column(String, nullable=True)  # e.g., 'swinging_strike', 'ball', etc.
+    play_result = Column(String, nullable=True)   # e.g., 'flyout', 'single', etc.
+    location = Column(String, nullable=True)      # e.g., 'high_in', 'low_away', etc.
     transition_count = Column(Integer, default=0)
     probability = Column(Float)
     created_at = Column(DateTime, default=datetime.utcnow)

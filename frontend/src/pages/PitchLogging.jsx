@@ -53,6 +53,11 @@ function PitchLogging({ pitcher, onPitcherChange }) {
     pitch_result: '',
     play_result: '',
   });
+  const [lastPitchContext, setLastPitchContext] = useState({
+    pitch_result: null,
+    play_result: null,
+    location: null,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -86,6 +91,9 @@ function PitchLogging({ pitcher, onPitcherChange }) {
           pitcher_id: pitcher.id,
           last_n_pitches: validPitchHistory,
           count,
+          last_pitch_result: lastPitchContext.pitch_result,
+          last_play_result: lastPitchContext.play_result,
+          last_location: lastPitchContext.location,
         }),
       });
       
@@ -153,6 +161,13 @@ function PitchLogging({ pitcher, onPitcherChange }) {
       }
       
       const data = await response.json();
+      
+      // Store the last pitch's context before clearing the form
+      setLastPitchContext({
+        pitch_result: formData.pitch_result,
+        play_result: formData.pitch_result === PITCH_RESULTS.IN_PLAY ? formData.play_result : null,
+        location: formData.location,
+      });
       
       // Update pitch history with the new pitch
       setPitchHistory(prev => {
