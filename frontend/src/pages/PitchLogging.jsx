@@ -875,8 +875,9 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                   setShowPitcherSelect(true);
                   fetchPitchers();
                 }}
-                className="text-sm text-gray-500 hover:text-gray-700"
+                className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
               >
+                <ArrowPathIcon className="h-4 w-4" />
                 Change
               </button>
               <button
