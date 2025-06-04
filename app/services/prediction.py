@@ -344,12 +344,14 @@ class PredictionService:
 
         # Calculate prediction accuracy
         predictions = db.query(PredictionHistory).filter(
-            PredictionHistory.pitcher_id == pitcher_id
+            PredictionHistory.pitcher_id == pitcher_id,
+            PredictionHistory.was_correct.isnot(None)  # Only count predictions that have been evaluated
         ).all()
         
-        accuracy = 0.0
+        accuracy = 1.0  # Default to 100% if no predictions
         if predictions:
-            accuracy = sum(1 for p in predictions if p.was_correct) / len(predictions)
+            correct_predictions = sum(1 for p in predictions if p.was_correct)
+            accuracy = correct_predictions / len(predictions)
 
         return SessionSummary(
             pitch_distribution=pitch_counts,

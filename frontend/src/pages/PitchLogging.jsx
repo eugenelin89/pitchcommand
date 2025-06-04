@@ -879,6 +879,13 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
               >
                 Change
               </button>
+              <button
+                onClick={() => navigate(`/summary/${pitcher.id}`)}
+                className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+              >
+                <ChartBarIcon className="h-4 w-4" />
+                Summary
+              </button>
             </div>
           </div>
           <div className="flex items-center gap-4">

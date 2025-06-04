@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-ro
 import PitcherSelect from './pages/PitcherSelect';
 import PitchLogging from './pages/PitchLogging';
 import GameManagement from './pages/GameManagement';
+import SessionSummary from './pages/SessionSummary';
 
 function App() {
   const [selectedPitcher, setSelectedPitcher] = useState(null);
@@ -54,6 +55,7 @@ function App() {
               }
             />
             <Route path="/games" element={<GameManagement />} />
+            <Route path="/summary/:pitcherId" element={<SessionSummary />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
