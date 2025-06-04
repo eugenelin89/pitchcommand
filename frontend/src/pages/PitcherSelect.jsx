@@ -11,7 +11,9 @@ function PitcherSelect({ onSelect }) {
   const [formData, setFormData] = useState({
     name: '',
     team: '',
-    handedness: 'right'
+    number: '',
+    hand: 'R',
+    age: ''
   });
 
   useEffect(() => {
@@ -68,7 +70,9 @@ function PitcherSelect({ onSelect }) {
       setFormData({
         name: '',
         team: '',
-        handedness: 'right'
+        number: '',
+        hand: 'R',
+        age: ''
       });
     } catch (error) {
       console.error('Error creating pitcher:', error);
@@ -131,16 +135,55 @@ function PitcherSelect({ onSelect }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Handedness</label>
-            <select
-              value={formData.handedness}
-              onChange={(e) => setFormData({ ...formData, handedness: e.target.value })}
+            <label className="block text-sm font-medium text-gray-700">Number</label>
+            <input
+              type="number"
+              value={formData.number}
+              onChange={(e) => setFormData({ ...formData, number: e.target.value })}
               className="input mt-1"
+              min="0"
+              max="99"
               required
-            >
-              <option value="right">Right</option>
-              <option value="left">Left</option>
-            </select>
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Throwing Hand</label>
+            <div className="mt-1 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, hand: 'R' })}
+                className={`flex-1 p-2 rounded ${
+                  formData.hand === 'R'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Right
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, hand: 'L' })}
+                className={`flex-1 p-2 rounded ${
+                  formData.hand === 'L'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Left
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Age</label>
+            <input
+              type="number"
+              value={formData.age}
+              onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+              className="input mt-1"
+              min="0"
+              max="100"
+              required
+            />
           </div>
           <div className="flex justify-end gap-4">
             <button
