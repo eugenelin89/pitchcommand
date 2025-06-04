@@ -20,4 +20,8 @@ class Inning(Base):
     
     # Relationships - many-to-one should use select, collections should use dynamic
     game = relationship("Game", back_populates="innings", lazy="select")
-    pitches = relationship("Pitch", back_populates="inning", lazy="dynamic", cascade="all, delete-orphan") 
+    pitches = relationship("Pitch", back_populates="inning", lazy="dynamic", cascade="all, delete-orphan")
+    game_state = relationship("GameState", back_populates="inning", uselist=False)
+
+    def __repr__(self):
+        return f"<Inning(id={self.id}, game_id={self.game_id}, inning_number={self.inning_number}, half={self.half})>" 

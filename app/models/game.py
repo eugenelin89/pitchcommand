@@ -16,4 +16,5 @@ class Game(Base):
     
     # Relationships - collections should use dynamic
     innings = relationship("Inning", back_populates="game", lazy="dynamic", cascade="all, delete-orphan")
-    pitches = relationship("Pitch", back_populates="game", lazy="dynamic", cascade="all, delete-orphan") 
+    pitches = relationship("Pitch", back_populates="game", lazy="dynamic", cascade="all, delete-orphan")
+    game_state = relationship("GameState", back_populates="game", uselist=False) 

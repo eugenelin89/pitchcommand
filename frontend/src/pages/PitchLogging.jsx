@@ -95,6 +95,25 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
     hitter_handedness: 'R',
   });
 
+  // Initialize pitch history when pitcher changes
+  useEffect(() => {
+    if (pitcher?.id) {
+      fetchRecentPitches().then(pitches => {
+        if (pitches && pitches.length > 0) {
+          setPitchHistory(pitches.map(p => p.pitch_type).slice(-3));
+          if (pitches[0]) {
+            setLastPitchContext({
+              pitch_result: pitches[0].pitch_result,
+              play_result: pitches[0].play_result,
+              location: pitches[0].location,
+              hitter_handedness: pitches[0].hitter_handedness
+            });
+          }
+        }
+      });
+    }
+  }, [pitcher?.id]);
+
   useEffect(() => {
     if (pitcher?.game) {
       setCurrentGame(pitcher.game);
@@ -106,11 +125,11 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   }, [pitcher]);
 
   useEffect(() => {
-    // Only fetch predictions if we have a valid pitch history
-    if (pitchHistory.length > 0) {
+    // Only fetch predictions if we have a valid pitch history and all required data
+    if (pitchHistory.length > 0 && pitcher?.id && currentInning?.id) {
       fetchPredictions();
     }
-  }, [pitchHistory]);
+  }, [pitchHistory, count, lastPitchContext, pitcher?.id, currentInning?.id]);
 
   const fetchPitchers = async () => {
     try {
@@ -164,10 +183,10 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
 
       // Don't fetch predictions if we don't have any valid pitches
       if (validPitchHistory.length === 0) {
-        setPredictions([]);
-        return;
+        return;  // Don't clear existing predictions
       }
 
+      // Ensure we're sending valid PitchType enum values
       const response = await fetch('http://localhost:8000/api/v1/predict', {
         method: 'POST',
         headers: {
@@ -177,27 +196,26 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
           pitcher_id: pitcher.id,
           game_id: pitcher.game.id,
           inning_id: currentInning.id,
-          last_n_pitches: validPitchHistory,
+          last_n_pitches: validPitchHistory.map(pitch => PITCH_TYPES[pitch] || pitch),  // Ensure we're sending valid enum values
           count,
-          last_pitch_result: lastPitchContext.pitch_result,
-          last_play_result: lastPitchContext.play_result,
-          last_location: lastPitchContext.location,
-          hitter_handedness: lastPitchContext.hitter_handedness
+          last_pitch_result: lastPitchContext.pitch_result || null,
+          last_play_result: lastPitchContext.play_result || null,
+          last_location: lastPitchContext.location || null,
+          hitter_handedness: lastPitchContext.hitter_handedness || 'R'  // Default to 'R' if not set
         }),
       });
       
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Failed to fetch predictions:', response.status, errorData);
-        setPredictions([]);
-        return;
+        return;  // Don't clear existing predictions
       }
       
       const data = await response.json();
       setPredictions(data.predictions || []);
     } catch (error) {
       console.error('Error fetching predictions:', error);
-      setPredictions([]);
+      // Don't clear existing predictions on error
     }
   };
 
@@ -258,8 +276,8 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
           },
           body: JSON.stringify({
             game_id: pitcher.game.id,
-            inning_number: currentInning.inning_number,
-            half: currentInning.half
+            inning_number: 1,
+            half: 'top'
           }),
         });
         
@@ -326,6 +344,145 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
     }
   };
 
+  const initializeGameState = async () => {
+    try {
+      if (!pitcher || !pitcher.game) {
+        console.log('No pitcher or game selected yet');
+        return;
+      }
+
+      // Try to get existing game state
+      const response = await fetch(`http://localhost:8000/api/v1/game-state/${pitcher.game.id}`);
+      if (response.ok) {
+        const gameState = await response.json();
+        setCount(gameState.count);
+        setOuts(gameState.outs);
+        setCurrentInning({
+          inning_number: gameState.inning.inning_number,
+          half: gameState.inning.half,
+          id: gameState.inning_id
+        });
+      } else if (response.status === 404) {
+        // Get or create the first inning
+        let inningId;
+        const inningsResponse = await fetch(`http://localhost:8000/api/v1/games/${pitcher.game.id}/innings`);
+        if (inningsResponse.ok) {
+          const innings = await inningsResponse.json();
+          if (innings.length > 0) {
+            inningId = innings[0].id;
+          } else {
+            // Create first inning if none exists
+            const createInningResponse = await fetch('http://localhost:8000/api/v1/innings', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                game_id: pitcher.game.id,
+                inning_number: 1,
+                half: 'top'
+              }),
+            });
+            
+            if (!createInningResponse.ok) {
+              throw new Error('Failed to create inning');
+            }
+            
+            const newInning = await createInningResponse.json();
+            inningId = newInning.id;
+          }
+        }
+
+        // Create new game state with the inning ID
+        const createResponse = await fetch('http://localhost:8000/api/v1/game-state', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            game_id: pitcher.game.id,
+            inning_id: inningId,
+            outs: 0,
+            count: '0-0'
+          }),
+        });
+        
+        if (!createResponse.ok) {
+          throw new Error('Failed to create game state');
+        }
+        
+        const newGameState = await createResponse.json();
+        setCount(newGameState.count);
+        setOuts(newGameState.outs);
+        setCurrentInning({
+          inning_number: newGameState.inning.inning_number,
+          half: newGameState.inning.half,
+          id: newGameState.inning_id
+        });
+      }
+    } catch (error) {
+      console.error('Error initializing game state:', error);
+      setError('Failed to initialize game state. Please try again.');
+    }
+  };
+
+  const updateGameState = async (newCount, newOuts, newInningId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/game-state/${pitcher.game.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          count: newCount,
+          outs: newOuts,
+          inning_id: newInningId
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update game state');
+      }
+    } catch (error) {
+      console.error('Error updating game state:', error);
+      setError('Failed to update game state. Please try again.');
+    }
+  };
+
+  const advanceInning = async () => {
+    try {
+      // Create the next inning
+      const createInningResponse = await fetch('http://localhost:8000/api/v1/innings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          game_id: pitcher.game.id,
+          inning_number: currentInning.half === 'top' ? currentInning.inning_number : currentInning.inning_number + 1,
+          half: currentInning.half === 'top' ? 'bottom' : 'top'
+        }),
+      });
+      
+      if (!createInningResponse.ok) {
+        throw new Error('Failed to create next inning');
+      }
+      
+      const newInning = await createInningResponse.json();
+      setCurrentInning({
+        inning_number: newInning.inning_number,
+        half: newInning.half,
+        id: newInning.id
+      });
+      
+      return newInning;
+    } catch (error) {
+      console.error('Error advancing inning:', error);
+      setError('Failed to advance inning. Please try again.');
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!currentInning.id) {
@@ -347,7 +504,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         pitcher_id: pitcher.id,
         game_id: pitcher.game.id,
         inning_id: currentInning.id,
-        sequence_number: sequenceNumber,  // Add sequence number
+        sequence_number: sequenceNumber,
         count,
         outs,
         pitch_type: formData.pitch_type,
@@ -377,102 +534,80 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
       const loggedPitch = await response.json();
       console.log('Pitch logged successfully:', loggedPitch);
       
-      // Store the last pitch's context before clearing the form
-      const newLastPitchContext = {
+      // Update pitch history
+      setPitchHistory(prev => [...prev, formData.pitch_type].slice(-3));
+      
+      // Update last pitch context
+      setLastPitchContext({
         pitch_result: formData.pitch_result,
-        play_result: formData.pitch_result === PITCH_RESULTS.IN_PLAY ? formData.play_result : null,
+        play_result: formData.play_result,
         location: formData.location,
-        hitter_handedness: formData.hitter_handedness,
-      };
-      setLastPitchContext(newLastPitchContext);
+        hitter_handedness: formData.hitter_handedness
+      });
       
-      // Update pitch history with the new pitch
-      const newPitchHistory = [...pitchHistory, formData.pitch_type].slice(-5);
-      setPitchHistory(newPitchHistory);
-      
-      // Update outs based on pitch result
-      let newOuts = outs;
-      let shouldIncrementOuts = false;
-
-      // Check for strikeout - either current count is 0-2 or will become 0-2 after this strike
-      if (formData.pitch_result === PITCH_RESULTS.SWINGING_STRIKE) {
-        const [balls, strikes] = count.split('-').map(Number);
-        if (strikes === 2 || (strikes + 1 >= 3)) {
-          shouldIncrementOuts = true;
-          console.log('Strikeout detected - will increment outs');
-        }
-      } 
-      // Check for out in play
-      else if (formData.pitch_result === PITCH_RESULTS.IN_PLAY && 
-        [PLAY_RESULTS.GROUNDOUT, PLAY_RESULTS.FLYOUT, PLAY_RESULTS.SACRIFICE].includes(formData.play_result)) {
-        shouldIncrementOuts = true;
-        console.log('Out in play detected - will increment outs');
-      }
-
-      if (shouldIncrementOuts) {
-        newOuts = outs + 1;
-        console.log(`Incrementing outs from ${outs} to ${newOuts}`);
-        
-        // If this was the third out, advance inning
-        if (newOuts === 3) {
-          console.log('Third out reached - advancing inning');
-          if (currentInning.half === 'bottom') {
-            // If in bottom, go to top of next inning
-            const nextInning = {
-              inning_number: currentInning.inning_number + 1,
-              half: 'top',
-              id: null
-            };
-            console.log('Advancing to top of next inning:', nextInning);
-            setCurrentInning(nextInning);
-            await fetchCurrentInning();
-            newOuts = 0; // Reset outs after advancing inning
-          } else {
-            // If in top, go to bottom of same inning
-            const nextInning = {
-              ...currentInning,
-              half: 'bottom',
-              id: null
-            };
-            console.log('Advancing to bottom of same inning:', nextInning);
-            setCurrentInning(nextInning);
-            await fetchCurrentInning();
-            newOuts = 0; // Reset outs after advancing inning
-          }
-        }
-        
-        setOuts(newOuts);
-      }
-      
-      // Update count based on pitch result
+      // Calculate new count and outs
       const [balls, strikes] = count.split('-').map(Number);
       let newCount = count;
-      
-      if (formData.pitch_result === PITCH_RESULTS.IN_PLAY) {
-        // Reset count for any play result
-        newCount = '0-0';
-      } else if (formData.pitch_result === PITCH_RESULTS.BALL) {
-        // Ball
+      let newOuts = outs;
+      let newInningId = currentInning.id;
+
+      if (formData.pitch_result === PITCH_RESULTS.BALL) {
         if (balls + 1 >= 4) {
           newCount = '0-0'; // Walk
         } else {
           newCount = `${balls + 1}-${strikes}`;
         }
       } else if ([PITCH_RESULTS.SWINGING_STRIKE, PITCH_RESULTS.CALLED_STRIKE].includes(formData.pitch_result)) {
-        // Strike
         if (strikes + 1 >= 3) {
           newCount = '0-0'; // Strikeout
+          newOuts = (outs + 1) % 3;
+          if (newOuts === 0) {
+            // Advance inning
+            const newInning = await advanceInning();
+            newInningId = newInning.id;
+          }
         } else {
           newCount = `${balls}-${strikes + 1}`;
         }
       } else if (formData.pitch_result === PITCH_RESULTS.FOUL) {
-        // Foul ball only counts as a strike if there are less than 2 strikes
         if (strikes < 2) {
           newCount = `${balls}-${strikes + 1}`;
         }
+      } else if (formData.pitch_result === PITCH_RESULTS.IN_PLAY) {
+        if (formData.play_result === PLAY_RESULTS.STRIKEOUT) {
+          newCount = '0-0';
+          newOuts = (outs + 1) % 3;
+          if (newOuts === 0) {
+            // Advance inning
+            const newInning = await advanceInning();
+            newInningId = newInning.id;
+          }
+        } else if ([PLAY_RESULTS.GROUNDOUT, PLAY_RESULTS.FLYOUT, PLAY_RESULTS.SACRIFICE].includes(formData.play_result)) {
+          newCount = '0-0';
+          newOuts = (outs + 1) % 3;
+          if (newOuts === 0) {
+            // Advance inning
+            const newInning = await advanceInning();
+            newInningId = newInning.id;
+          }
+        } else {
+          newCount = '0-0';
+        }
       }
+
+      // Update game state in database
+      await updateGameState(newCount, newOuts, newInningId);
       
+      // Update local state
       setCount(newCount);
+      setOuts(newOuts);
+      if (newInningId !== currentInning.id) {
+        setCurrentInning({
+          inning_number: currentInning.inning_number + (currentInning.half === 'top' ? 0 : 1),
+          half: currentInning.half === 'top' ? 'bottom' : 'top',
+          id: newInningId
+        });
+      }
       
       // Clear form data
       setFormData({
@@ -484,12 +619,8 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         notes: ''
       });
 
-      // Immediately fetch updated recent pitches
-      console.log('Fetching updated recent pitches...');
+      // Fetch updated recent pitches and predictions
       await fetchRecentPitches();
-      
-      // Then fetch predictions with the updated context
-      console.log('Fetching predictions...');
       await fetchPredictions();
       
     } catch (error) {
@@ -640,110 +771,6 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         </div>
       </div>
     );
-  };
-
-  const initializeGameState = async () => {
-    try {
-      console.log('Initializing game state...');
-      // Fetch the last pitch for this game
-      const response = await fetch(`http://localhost:8000/api/v1/pitches/pitcher/${pitcher.id}?limit=1`);
-      if (!response.ok) throw new Error('Failed to fetch last pitch');
-      const pitches = await response.json();
-      
-      if (pitches.length > 0) {
-        const lastPitch = pitches[0];
-        console.log('Last pitch found:', lastPitch);
-        
-        // Get the inning details
-        const inningResponse = await fetch(`http://localhost:8000/api/v1/innings/${lastPitch.inning_id}`);
-        if (!inningResponse.ok) throw new Error('Failed to fetch inning details');
-        const inning = await inningResponse.json();
-        
-        // Set the current inning
-        setCurrentInning({
-          inning_number: inning.inning_number,
-          half: inning.half,
-          id: inning.id
-        });
-        
-        // Set the count from the last pitch
-        setCount(lastPitch.count);
-        
-        // Set the outs
-        let newOuts = parseInt(lastPitch.outs) || 0;
-        console.log('Initial outs from last pitch:', newOuts);
-        
-        // Check if the last pitch was an out
-        const wasOut = 
-          (lastPitch.pitch_result === PITCH_RESULTS.SWINGING_STRIKE && lastPitch.count.split('-')[1] === '2') ||
-          (lastPitch.pitch_result === PITCH_RESULTS.IN_PLAY && 
-           [PLAY_RESULTS.GROUNDOUT, PLAY_RESULTS.FLYOUT, PLAY_RESULTS.SACRIFICE].includes(lastPitch.play_result));
-        
-        if (wasOut) {
-          newOuts = (newOuts + 1) % 3;
-          console.log('Last pitch was an out, incrementing outs to:', newOuts);
-          
-          // If this was the third out, advance the inning
-          if (newOuts === 0) {
-            console.log('Last pitch was the third out, advancing inning...');
-            const nextInningHalf = inning.half === 'top' ? 'bottom' : 'top';
-            const nextInningNumber = inning.half === 'bottom' ? inning.inning_number + 1 : inning.inning_number;
-            
-            // Create or get the next inning
-            const nextInningResponse = await fetch('http://localhost:8000/api/v1/innings', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                game_id: pitcher.game.id,
-                inning_number: nextInningNumber,
-                half: nextInningHalf
-              }),
-            });
-            
-            if (!nextInningResponse.ok) throw new Error('Failed to create next inning');
-            const nextInning = await nextInningResponse.json();
-            
-            setCurrentInning({
-              inning_number: nextInning.inning_number,
-              half: nextInning.half,
-              id: nextInning.id
-            });
-          }
-        }
-        
-        console.log('Setting final outs value:', newOuts);
-        setOuts(newOuts);
-        
-        // Set the pitch history
-        const historyResponse = await fetch(`http://localhost:8000/api/v1/pitches/pitcher/${pitcher.id}?limit=5`);
-        if (!historyResponse.ok) throw new Error('Failed to fetch pitch history');
-        const history = await historyResponse.json();
-        setPitchHistory(history.map(p => p.pitch_type));
-        
-        // Set the last pitch context
-        setLastPitchContext({
-          pitch_result: lastPitch.pitch_result,
-          play_result: lastPitch.play_result,
-          location: lastPitch.location,
-          hitter_handedness: lastPitch.hitter_handedness
-        });
-      } else {
-        // No pitches yet, start with inning 1 top and 0 outs
-        console.log('No pitches found, starting with 0 outs');
-        setOuts(0);
-        setCount('0-0');
-        await fetchCurrentInning();
-      }
-      
-      // Fetch recent pitches
-      await fetchRecentPitches();
-      
-    } catch (error) {
-      console.error('Error initializing game state:', error);
-      setError('Failed to initialize game state. Please try again.');
-    }
   };
 
   const handlePitcherSelect = async (selectedPitcher) => {
@@ -1155,7 +1182,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         </div>
 
         <div className="card">
-          <h3 className="text-lg font-medium mb-4">Predictions</h3>
+          <h3 className="text-lg font-medium mb-4">Next Pitch Prediction</h3>
           <div className="space-y-4">
             {Array.isArray(predictions) && predictions.length > 0 ? (
               predictions.map((pred, index) => (

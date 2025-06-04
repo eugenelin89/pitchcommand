@@ -254,7 +254,7 @@ function PitcherSelect({ onSelect }) {
                 >
                   <div className="font-medium">{pitcher.name}</div>
                   <div className="text-sm text-gray-600">
-                    {pitcher.team} • {formatHandedness(pitcher.handedness)}
+                    {pitcher.team} • {formatHandedness(pitcher.hand)}
                   </div>
                 </button>
               ))}
