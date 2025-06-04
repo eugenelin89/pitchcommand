@@ -124,12 +124,12 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
     }
   }, [pitcher]);
 
+  // Fetch predictions when pitch history, count, or last pitch context changes
   useEffect(() => {
-    // Only fetch predictions if we have a valid pitch history and all required data
-    if (pitchHistory.length > 0 && pitcher?.id && currentInning?.id) {
+    if (pitcher?.id && pitcher?.game?.id && currentInning?.id && pitchHistory.length > 0) {
       fetchPredictions();
     }
-  }, [pitchHistory, count, lastPitchContext, pitcher?.id, currentInning?.id]);
+  }, [pitcher?.id, pitcher?.game?.id, currentInning?.id, pitchHistory, count, lastPitchContext]);
 
   const fetchPitchers = async () => {
     try {
@@ -442,6 +442,17 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
       
       if (!response.ok) {
         throw new Error('Failed to update game state');
+      }
+
+      const updatedGameState = await response.json();
+      setCount(updatedGameState.count);
+      setOuts(updatedGameState.outs);
+      if (updatedGameState.inning_id !== currentInning.id) {
+        setCurrentInning({
+          inning_number: updatedGameState.inning.inning_number,
+          half: updatedGameState.inning.half,
+          id: updatedGameState.inning_id
+        });
       }
     } catch (error) {
       console.error('Error updating game state:', error);
