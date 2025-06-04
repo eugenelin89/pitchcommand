@@ -76,3 +76,16 @@ def get_pitcher_pitches(
 @router.get("/pitcher/{pitcher_id}/summary", response_model=SessionSummary)
 async def get_pitcher_summary(pitcher_id: str):
     return prediction_service.get_session_summary(pitcher_id)
+
+
+@router.get("/pitcher/{pitcher_id}/game/{game_id}", response_model=List[Pitch])
+async def get_pitcher_game_pitches(
+    pitcher_id: str,
+    game_id: str,
+    db: Session = Depends(get_db)
+):
+    pitches = db.query(PitchModel).filter(
+        PitchModel.pitcher_id == pitcher_id,
+        PitchModel.game_id == game_id
+    ).order_by(PitchModel.sequence_number.desc()).all()
+    return pitches

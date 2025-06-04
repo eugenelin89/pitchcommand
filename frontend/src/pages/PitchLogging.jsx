@@ -221,9 +221,9 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
 
   const fetchRecentPitches = async () => {
     try {
-      console.log('Fetching recent pitches for pitcher:', pitcher.id);
-      const response = await fetch(`http://localhost:8000/api/v1/pitches/pitcher/${pitcher.id}?limit=10`);
-      if (!response.ok) throw new Error('Failed to fetch recent pitches');
+      console.log('Fetching pitches for pitcher:', pitcher.id, 'in game:', pitcher.game.id);
+      const response = await fetch(`http://localhost:8000/api/v1/pitches/pitcher/${pitcher.id}/game/${pitcher.game.id}`);
+      if (!response.ok) throw new Error('Failed to fetch pitches');
       const data = await response.json();
       console.log('Received pitches:', data);
       
@@ -247,8 +247,8 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
       console.log('Sorted pitches with innings:', sortedPitches);
       setRecentPitches(sortedPitches);
     } catch (error) {
-      console.error('Error fetching recent pitches:', error);
-      setError('Failed to load recent pitches. Please try again.');
+      console.error('Error fetching pitches:', error);
+      setError('Failed to load pitches. Please try again.');
     }
   };
 
@@ -1226,7 +1226,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
           </div>
 
           <div className="card">
-            <h3 className="text-lg font-medium mb-4">Recent Pitches</h3>
+            <h3 className="text-lg font-medium mb-4">Game Pitch History</h3>
             <div className="overflow-y-auto max-h-[400px] border border-gray-200 rounded-lg">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-10">
@@ -1236,6 +1236,9 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                     </th>
                     <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Inning
+                    </th>
+                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Count
                     </th>
                     <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Pitch Type
@@ -1269,6 +1272,9 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                           </div>
                         ) : '-'}
                       </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                        {pitch.count}
+                      </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                         {PITCH_TYPE_DISPLAY[pitch.pitch_type] || pitch.pitch_type}
                       </td>
@@ -1282,23 +1288,11 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                           </div>
                         ) : '-'}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          pitch.pitch_result === 'swinging_strike' || pitch.pitch_result === 'called_strike'
-                            ? 'bg-green-100 text-green-800'
-                            : pitch.pitch_result === 'ball'
-                            ? 'bg-blue-100 text-blue-800'
-                            : pitch.pitch_result === 'foul'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : pitch.pitch_result === 'in_play'
-                            ? 'bg-purple-100 text-purple-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {PITCH_RESULT_DISPLAY[pitch.pitch_result] || pitch.pitch_result}
-                        </span>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                        {PITCH_RESULT_DISPLAY[pitch.pitch_result] || pitch.pitch_result}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm">
-                        {pitch.pitch_result === 'in_play' && pitch.play_result ? (
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                        {pitch.play_result ? (
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             pitch.play_result === 'homerun'
                               ? 'bg-red-100 text-red-800'
