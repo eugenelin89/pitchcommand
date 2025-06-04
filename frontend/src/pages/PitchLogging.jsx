@@ -1297,7 +1297,9 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                           }`}>
                             {PLAY_RESULT_DISPLAY[pitch.play_result] || pitch.play_result}
                           </span>
-                        ) : (pitch.pitch_result === 'swinging_strike' || pitch.pitch_result === 'called_strike') && pitch.count === '0-2' ? (
+                        ) : (pitch.pitch_result === 'swinging_strike' || pitch.pitch_result === 'called_strike') && (
+                          pitch.count === '0-2' || pitch.count === '1-2' || pitch.count === '2-2' || pitch.count === '3-2'
+                        ) ? (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                             K
                           </span>
