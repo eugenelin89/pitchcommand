@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import PitcherSelect from './pages/PitcherSelect';
 import PitchLogging from './pages/PitchLogging';
-import SessionSummary from './pages/SessionSummary';
+import GameManagement from './pages/GameManagement';
 
 function App() {
   const [selectedPitcher, setSelectedPitcher] = useState(null);
@@ -10,41 +10,51 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-            <h1 className="text-2xl font-bold text-gray-900">PitchCommand</h1>
+        <nav className="bg-white shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-16">
+              <div className="flex">
+                <div className="flex-shrink-0 flex items-center">
+                  <Link to="/" className="text-xl font-bold text-primary-600">
+                    PitchCommand
+                  </Link>
+                </div>
+                <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+                  <Link
+                    to="/"
+                    className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                  >
+                    Home
+                  </Link>
+                  <Link
+                    to="/games"
+                    className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                  >
+                    Games
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
-        </header>
+        </nav>
 
-        <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <Routes>
-            <Route 
-              path="/" 
+            <Route
+              path="/"
               element={
                 selectedPitcher ? (
-                  <Navigate to="/log" replace />
+                  <PitchLogging
+                    pitcher={selectedPitcher}
+                    onPitcherChange={setSelectedPitcher}
+                  />
                 ) : (
                   <PitcherSelect onSelect={setSelectedPitcher} />
                 )
-              } 
+              }
             />
-            <Route 
-              path="/log" 
-              element={
-                selectedPitcher ? (
-                  <PitchLogging 
-                    pitcher={selectedPitcher} 
-                    onPitcherChange={setSelectedPitcher} 
-                  />
-                ) : (
-                  <Navigate to="/" replace />
-                )
-              } 
-            />
-            <Route 
-              path="/summary/:pitcherId" 
-              element={<SessionSummary />} 
-            />
+            <Route path="/games" element={<GameManagement />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>

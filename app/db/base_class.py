@@ -1,19 +1,12 @@
 from typing import Any
-
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
-
-from app.db.base_class import Base
-from app.models import *  # noqa
-
-# Import all models here that are needed by Alembic
-__all__ = ["Base"]
 
 @as_declarative()
 class Base:
     id: Any
     __name__: str
-
+    
     # Generate __tablename__ automatically
     @declared_attr
     def __tablename__(cls) -> str:
-        return cls.__name__.lower()
+        return cls.__name__.lower() 

@@ -29,8 +29,15 @@ class PlayResult(str, Enum):
     SACRIFICE = "sacrifice"
 
 
+class InningHalf(str, Enum):
+    TOP = "top"
+    BOTTOM = "bottom"
+
+
 class PitchBase(BaseModel):
     pitcher_id: str
+    game_id: str
+    inning_id: str
     count: str = Field(..., pattern=r"^[0-3]-[0-2]$")  # Validates count format (e.g., 1-2)
     pitch_type: PitchType
     location: Optional[str] = None
@@ -40,11 +47,13 @@ class PitchBase(BaseModel):
 
 
 class PitchCreate(PitchBase):
+    sequence_number: int
     pass
 
 
 class Pitch(PitchBase):
     id: str
+    sequence_number: int
     created_at: datetime
 
     class Config:
@@ -53,6 +62,8 @@ class Pitch(PitchBase):
 
 class PredictionRequest(BaseModel):
     pitcher_id: str
+    game_id: str
+    inning_id: str
     last_n_pitches: List[PitchType]
     count: str = Field(..., pattern=r"^[0-3]-[0-2]$")
     last_pitch_result: Optional[PitchResult] = None

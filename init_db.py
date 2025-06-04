@@ -1,7 +1,9 @@
-from app.db.base import Base
+from app.db.base_class import Base
 from app.db.session import engine
 from app.models.pitcher import Pitcher
 from app.models.pitch import Pitch
+from app.models.game import Game
+from app.models.inning import Inning
 from app.models.prediction import TransitionTable, PredictionHistory
 
 def init_db():

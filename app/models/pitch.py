@@ -1,9 +1,9 @@
 from datetime import datetime
-from sqlalchemy import Column, DateTime, ForeignKey, String, Enum
+from sqlalchemy import Column, DateTime, ForeignKey, String, Enum, Integer
 from sqlalchemy.orm import relationship
 import enum
 
-from app.db.base import Base
+from app.db.base_class import Base
 
 class PitchType(str, enum.Enum):
     FB = "FB"  # Fastball
@@ -27,8 +27,13 @@ class PlayResult(str, enum.Enum):
     SACRIFICE = "sacrifice"
 
 class Pitch(Base):
+    __tablename__ = "pitch"
+    
     id = Column(String, primary_key=True, index=True)
     pitcher_id = Column(String, ForeignKey("pitcher.id"))
+    game_id = Column(String, ForeignKey("game.id"))
+    inning_id = Column(String, ForeignKey("inning.id"))
+    sequence_number = Column(Integer)  # Sequence number within the game
     count = Column(String)
     pitch_type = Column(Enum(PitchType))
     location = Column(String, nullable=True)
@@ -37,5 +42,7 @@ class Pitch(Base):
     hitter_handedness = Column(String)  # 'L' for lefty, 'R' for righty
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relationship
-    pitcher = relationship("Pitcher", back_populates="pitches")
+    # Relationships - many-to-one should use select
+    pitcher = relationship("Pitcher", back_populates="pitches", lazy="select")
+    game = relationship("Game", back_populates="pitches", lazy="select")
+    inning = relationship("Inning", back_populates="pitches", lazy="select")

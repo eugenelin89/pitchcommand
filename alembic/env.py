@@ -6,10 +6,8 @@ from sqlalchemy import pool
 from alembic import context
 
 # Import our models
-from app.db.base import Base
-from app.models.pitcher import Pitcher
-from app.models.pitch import Pitch
-from app.models.prediction import TransitionTable, PredictionHistory
+from app.db.base_class import Base
+from app.models import *  # noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -1,5 +1,6 @@
 import uuid
 from typing import List
+from sqlalchemy import func
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -18,10 +19,13 @@ async def create_pitch(
     pitch: PitchCreate,
     db: Session = Depends(get_db)
 ):
-    # Create the pitch
+    # Create the pitch with the provided sequence number
     db_pitch = PitchModel(
         id=str(uuid.uuid4()),
         pitcher_id=pitch.pitcher_id,
+        game_id=pitch.game_id,
+        inning_id=pitch.inning_id,
+        sequence_number=pitch.sequence_number,  # Use the provided sequence number
         count=pitch.count,
         pitch_type=pitch.pitch_type,
         location=pitch.location,
@@ -34,16 +38,16 @@ async def create_pitch(
     db.refresh(db_pitch)
     
     # Get the last pitch for this pitcher
-    last_pitch = db.query(PitchModel).filter(
+    last_pitcher_pitch = db.query(PitchModel).filter(
         PitchModel.pitcher_id == pitch.pitcher_id
     ).order_by(PitchModel.created_at.desc()).offset(1).first()
     
     # Update the prediction model
-    if last_pitch:
+    if last_pitcher_pitch:
         await prediction_service.update_model(
             pitcher_id=pitch.pitcher_id,
             count=pitch.count,
-            last_pitch=last_pitch.pitch_type,
+            last_pitch=last_pitcher_pitch.pitch_type,
             next_pitch=pitch.pitch_type,
             pitch_result=pitch.pitch_result,
             play_result=pitch.play_result,
@@ -61,6 +65,7 @@ def get_pitcher_pitches(
     pitches = (
         db.query(PitchModel)
         .filter(PitchModel.pitcher_id == pitcher_id)
+        .order_by(PitchModel.sequence_number.desc())
         .offset(skip)
         .limit(limit)
         .all()
