@@ -198,81 +198,71 @@ class PredictionService:
         for transition in context_transitions:
             context_probs[transition.next_pitch] = transition.probability
 
-        # Initialize missing probabilities with uniform distribution
-        uniform_prob = 1.0 / len(self.pitch_types)
-        for pitch in self.pitch_types:
-            if pitch not in global_probs:
-                global_probs[pitch] = uniform_prob
-            if pitch not in count_probs:
-                count_probs[pitch] = uniform_prob
-            if pitch not in context_probs:
-                context_probs[pitch] = uniform_prob
-
-        # Combine probabilities with weights
-        # Count-specific: 40%, Context-specific: 40%, Global: 20%
-        combined_probs = {}
-        total_prob = 0.0
-        for pitch in self.pitch_types:
-            combined_probs[pitch] = (
-                0.4 * count_probs[pitch] +
-                0.4 * context_probs[pitch] +
-                0.2 * global_probs[pitch]
-            )
-            total_prob += combined_probs[pitch]
-        
-        # Normalize probabilities to ensure they sum to 1.0
-        if total_prob > 0:
-            for pitch in self.pitch_types:
-                combined_probs[pitch] = combined_probs[pitch] / total_prob
-
         # Get location probabilities for each pitch type
         location_probs = {}
-        for pitch in self.pitch_types:
-            # Get location transitions for this pitch type
-            location_transitions = db.query(TransitionTable).filter(
-                TransitionTable.pitcher_id == request.pitcher_id,
-                TransitionTable.next_pitch == pitch,
-                TransitionTable.hitter_handedness == request.hitter_handedness,
-                TransitionTable.location.isnot(None)
-            ).all()
+        for pitch_type in self.pitch_types:
+            # Get historical locations for this pitch type with context
+            locations = db.query(Pitch).filter(
+                Pitch.pitcher_id == request.pitcher_id,
+                Pitch.pitch_type == pitch_type,
+                Pitch.count == request.count,
+                Pitch.hitter_handedness == request.hitter_handedness
+            ).with_entities(Pitch.location, func.count(Pitch.location)).group_by(Pitch.location).all()
             
-            if location_transitions:
-                # Calculate location probabilities
-                location_counts = {}
-                total_locations = 0
-                for transition in location_transitions:
-                    if transition.location:  # Make sure location is not None
-                        location_counts[transition.location] = location_counts.get(transition.location, 0) + transition.transition_count
-                        total_locations += transition.transition_count
-                
-                if location_counts:  # Only if we have valid locations
-                    # Find most likely location
-                    most_likely_location = max(location_counts.items(), key=lambda x: x[1])
-                    location_probs[pitch] = {
-                        'location': most_likely_location[0],
-                        'confidence': most_likely_location[1] / total_locations
-                    }
-                else:
-                    location_probs[pitch] = None
+            if not locations:
+                # If no count-specific data, fall back to all locations for this pitch type
+                locations = db.query(Pitch).filter(
+                    Pitch.pitcher_id == request.pitcher_id,
+                    Pitch.pitch_type == pitch_type,
+                    Pitch.hitter_handedness == request.hitter_handedness
+                ).with_entities(Pitch.location, func.count(Pitch.location)).group_by(Pitch.location).all()
+            
+            if locations:
+                total = sum(count for _, count in locations)
+                location_probs[pitch_type] = {
+                    loc: count/total for loc, count in locations if loc is not None
+                }
             else:
-                location_probs[pitch] = None
+                # Default to middle-middle if no location data
+                location_probs[pitch_type] = {'middle_middle': 1.0}
 
-        # Create predictions for all pitch types
-        predictions = []
-        for pitch in self.pitch_types:
-            prediction = Prediction(
-                pitch_type=PitchType(pitch),
-                confidence=combined_probs[pitch]
+        # Combine probabilities with weights
+        final_probs = {}
+        for pitch_type in self.pitch_types:
+            # Weight the different probability sources
+            prob = (
+                0.4 * global_probs.get(pitch_type, 0) +
+                0.3 * count_probs.get(pitch_type, 0) +
+                0.3 * context_probs.get(pitch_type, 0)
             )
-            
-            # Add location prediction if available
-            if pitch in location_probs and location_probs[pitch]:
-                prediction.location = location_probs[pitch]['location']
-                prediction.location_confidence = location_probs[pitch]['confidence']
-            
-            predictions.append(prediction)
-            
-        predictions.sort(key=lambda x: x.confidence, reverse=True)
+            if prob > 0:
+                final_probs[pitch_type] = prob
+
+        # Normalize probabilities
+        total_prob = sum(final_probs.values())
+        if total_prob > 0:
+            final_probs = {k: v/total_prob for k, v in final_probs.items()}
+
+        # Create predictions with locations
+        predictions = []
+        for pitch_type, prob in sorted(final_probs.items(), key=lambda x: x[1], reverse=True):
+            # Get the most likely location for this pitch type
+            if pitch_type in location_probs:
+                locations = location_probs[pitch_type]
+                most_likely_loc = max(locations.items(), key=lambda x: x[1])
+                predictions.append(Prediction(
+                    pitch_type=PitchType(pitch_type),
+                    confidence=prob,
+                    location=most_likely_loc[0],
+                    location_confidence=most_likely_loc[1]
+                ))
+            else:
+                predictions.append(Prediction(
+                    pitch_type=PitchType(pitch_type),
+                    confidence=prob,
+                    location='middle_middle',
+                    location_confidence=1.0
+                ))
 
         # Store prediction in history
         prediction_history = PredictionHistory(

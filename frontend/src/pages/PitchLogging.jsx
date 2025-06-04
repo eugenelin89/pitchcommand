@@ -1181,43 +1181,33 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
           </form>
         </div>
 
-        <div className="card">
-          <h3 className="text-lg font-medium mb-4">Next Pitch Prediction</h3>
-          <div className="space-y-4">
-            {Array.isArray(predictions) && predictions.length > 0 ? (
-              predictions.map((pred, index) => (
-                <div
-                  key={index}
-                  className="p-3 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium">{PITCH_TYPE_DISPLAY[pred.pitch_type] || pred.pitch_type}</span>
-                    <span className="text-sm text-gray-600">
-                      {(pred.confidence * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  {pred.location && (
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1">
-                        <div className="text-sm text-gray-600 mb-1">Predicted Location</div>
-                        {renderPredictionStrikeZone(pred.location)}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Confidence: {(pred.location_confidence * 100).toFixed(1)}%
+        <div className="space-y-6">
+          <div className="card">
+            <h3 className="text-lg font-medium mb-4">Next Pitch Prediction</h3>
+            {predictions.length > 0 ? (
+              <div className="space-y-4">
+                {predictions.map((prediction, index) => (
+                  <div key={index} className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <div className="font-medium">{PITCH_TYPE_DISPLAY[prediction.pitch_type]}</div>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <div>Pitch Type Probability: {Math.round(prediction.confidence * 100)}%</div>
+                        <div>Location Probability: {Math.round(prediction.location_confidence * 100)}%</div>
                       </div>
                     </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="text-gray-500 text-center py-4">
-                No predictions available
+                    <div>
+                      {renderPredictionStrikeZone(prediction.location)}
+                    </div>
+                  </div>
+                ))}
               </div>
+            ) : (
+              <p className="text-gray-600">No predictions available</p>
             )}
           </div>
 
-          <div className="mt-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Recent Pitches</h4>
+          <div className="card">
+            <h3 className="text-lg font-medium mb-4">Recent Pitches</h3>
             <div className="overflow-y-auto max-h-[400px] border border-gray-200 rounded-lg">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-10">
