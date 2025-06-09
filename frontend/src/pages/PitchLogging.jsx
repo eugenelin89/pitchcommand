@@ -1,71 +1,93 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowPathIcon, ChartBarIcon, ArrowUpIcon, ArrowDownIcon, ChevronUpIcon, ChevronDownIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowPathIcon,
+  ChartBarIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  PlusIcon,
+} from "@heroicons/react/24/outline";
 
 // Match backend enums exactly
 const PITCH_TYPES = {
-  FB: 'FB',  // Fastball
-  CB: 'CB',  // Curveball
+  FB: "FB", // Fastball
+  CB: "CB", // Curveball
 };
 
 // Display names for pitch types
 const PITCH_TYPE_DISPLAY = {
-  FB: 'Fastball',
-  CB: 'Curveball',
+  FB: "Fastball",
+  CB: "Curveball",
 };
 
 const PITCH_RESULTS = {
-  SWINGING_STRIKE: 'swinging_strike',
-  CALLED_STRIKE: 'called_strike',
-  FOUL: 'foul',
-  BALL: 'ball',
-  IN_PLAY: 'in_play',
+  SWINGING_STRIKE: "swinging_strike",
+  CALLED_STRIKE: "called_strike",
+  FOUL: "foul",
+  BALL: "ball",
+  IN_PLAY: "in_play",
 };
 
 const PLAY_RESULTS = {
-  GROUNDOUT: 'groundout',
-  FLYOUT: 'flyout',
-  SINGLE: 'single',
-  DOUBLE: 'double',
-  TRIPLE: 'triple',
-  HOMERUN: 'homerun',
-  ERROR: 'error',
-  SACRIFICE: 'sacrifice',
+  GROUNDOUT: "groundout",
+  FLYOUT: "flyout",
+  SINGLE: "single",
+  DOUBLE: "double",
+  TRIPLE: "triple",
+  HOMERUN: "homerun",
+  ERROR: "error",
+  SACRIFICE: "sacrifice",
 };
 
-const LOCATIONS = ['high_in', 'high_middle', 'high_away', 'middle_in', 'middle_middle', 'middle_away', 'low_in', 'low_middle', 'low_away'];
+const LOCATIONS = [
+  "high_in",
+  "high_middle",
+  "high_away",
+  "middle_in",
+  "middle_middle",
+  "middle_away",
+  "low_in",
+  "low_middle",
+  "low_away",
+];
 
 // Add display names for pitch results
 const PITCH_RESULT_DISPLAY = {
-  swinging_strike: 'Swinging Strike',
-  called_strike: 'Called Strike',
-  foul: 'Foul',
-  ball: 'Ball',
-  in_play: 'In Play'
+  swinging_strike: "Swinging Strike",
+  called_strike: "Called Strike",
+  foul: "Foul",
+  ball: "Ball",
+  in_play: "In Play",
 };
 
 // Add display names for play results
 const PLAY_RESULT_DISPLAY = {
-  groundout: 'Groundout',
-  flyout: 'Flyout',
-  single: 'Single',
-  double: 'Double',
-  triple: 'Triple',
-  homerun: 'Homerun',
-  error: 'Error',
-  sacrifice: 'Sacrifice',
-  strikeout: 'K'
+  groundout: "Groundout",
+  flyout: "Flyout",
+  single: "Single",
+  double: "Double",
+  triple: "Triple",
+  homerun: "Homerun",
+  error: "Error",
+  sacrifice: "Sacrifice",
+  strikeout: "K",
 };
 
 function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   const navigate = useNavigate();
-  const [count, setCount] = useState('0-0');
+  const [count, setCount] = useState("0-0");
   const [outs, setOuts] = useState(0);
   const [pitchHistory, setPitchHistory] = useState([]);
   const [recentPitches, setRecentPitches] = useState([]);
   const [predictions, setPredictions] = useState([]);
   const [error, setError] = useState(null);
-  const [currentInning, setCurrentInning] = useState({ inning_number: 1, half: 'top', id: null });
+  const [currentInning, setCurrentInning] = useState({
+    inning_number: 1,
+    half: "top",
+    id: null,
+  });
   const [loading, setLoading] = useState(false);
   const [pitcher, setPitcher] = useState(initialPitcher);
   const [showPitcherSelect, setShowPitcherSelect] = useState(false);
@@ -74,39 +96,40 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   const [currentGame, setCurrentGame] = useState(null);
   const [shouldInitializeGame, setShouldInitializeGame] = useState(true);
   const [newPitcher, setNewPitcher] = useState({
-    name: '',
-    team: '',
-    number: '',
-    hand: 'R',
-    age: ''
+    name: "",
+    team: "",
+    number: "",
+    hand: "R",
+    age: "",
   });
   const [formData, setFormData] = useState({
-    pitch_type: '',
-    location: '',
-    pitch_result: '',
-    play_result: '',
-    hitter_handedness: 'R',
-    notes: ''
+    pitch_type: "",
+    location: "",
+    pitch_result: "",
+    play_result: "",
+    hitter_handedness: "R",
+    notes: "",
   });
   const [lastPitchContext, setLastPitchContext] = useState({
     pitch_result: null,
     play_result: null,
     location: null,
-    hitter_handedness: 'R',
+    hitter_handedness: "R",
   });
+  const [isInitializing, setIsInitializing] = useState(false);
 
   // Initialize pitch history when pitcher changes
   useEffect(() => {
     if (pitcher?.id) {
-      fetchRecentPitches().then(pitches => {
+      fetchRecentPitches().then((pitches) => {
         if (pitches && pitches.length > 0) {
-          setPitchHistory(pitches.map(p => p.pitch_type).slice(-3));
+          setPitchHistory(pitches.map((p) => p.pitch_type).slice(-3));
           if (pitches[0]) {
             setLastPitchContext({
               pitch_result: pitches[0].pitch_result,
               play_result: pitches[0].play_result,
               location: pitches[0].location,
-              hitter_handedness: pitches[0].hitter_handedness
+              hitter_handedness: pitches[0].hitter_handedness,
             });
           }
         }
@@ -117,7 +140,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   useEffect(() => {
     if (pitcher?.game) {
       setCurrentGame(pitcher.game);
-      if (shouldInitializeGame) {
+      if (shouldInitializeGame && !isInitializing) {
         initializeGameState();
         setShouldInitializeGame(false);
       }
@@ -126,41 +149,53 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
 
   // Fetch predictions when pitch history, count, or last pitch context changes
   useEffect(() => {
-    if (pitcher?.id && pitcher?.game?.id && currentInning?.id && pitchHistory.length > 0) {
+    if (
+      pitcher?.id &&
+      pitcher?.game?.id &&
+      currentInning?.id &&
+      pitchHistory.length > 0
+    ) {
       fetchPredictions();
     }
-  }, [pitcher?.id, pitcher?.game?.id, currentInning?.id, pitchHistory, count, lastPitchContext]);
+  }, [
+    pitcher?.id,
+    pitcher?.game?.id,
+    currentInning?.id,
+    pitchHistory,
+    count,
+    lastPitchContext,
+  ]);
 
   const fetchPitchers = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/pitchers');
-      if (!response.ok) throw new Error('Failed to fetch pitchers');
+      const response = await fetch("http://localhost:8000/api/v1/pitchers");
+      if (!response.ok) throw new Error("Failed to fetch pitchers");
       const data = await response.json();
       setAvailablePitchers(data);
     } catch (error) {
-      console.error('Error fetching pitchers:', error);
-      setError('Failed to load pitchers. Please try again.');
+      console.error("Error fetching pitchers:", error);
+      setError("Failed to load pitchers. Please try again.");
     }
   };
 
   const handleCreatePitcher = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:8000/api/v1/pitchers', {
-        method: 'POST',
+      const response = await fetch("http://localhost:8000/api/v1/pitchers", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           ...newPitcher,
           number: parseInt(newPitcher.number),
-          age: parseInt(newPitcher.age)
+          age: parseInt(newPitcher.age),
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to create pitcher');
+        throw new Error(errorData.detail || "Failed to create pitcher");
       }
 
       const createdPitcher = await response.json();
@@ -169,8 +204,8 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
       setShowPitcherSelect(false);
       onPitcherChange(createdPitcher);
     } catch (error) {
-      console.error('Error creating pitcher:', error);
-      setError(error.message || 'Failed to create pitcher. Please try again.');
+      console.error("Error creating pitcher:", error);
+      setError(error.message || "Failed to create pitcher. Please try again.");
     }
   };
 
@@ -178,181 +213,210 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
     try {
       // Only send valid pitch types from the history
       const validPitchHistory = pitchHistory
-        .filter(pitch => Object.values(PITCH_TYPES).includes(pitch))
-        .slice(-3);  // Send last 3 pitches
+        .filter((pitch) => Object.values(PITCH_TYPES).includes(pitch))
+        .slice(-3); // Send last 3 pitches
 
       // Don't fetch predictions if we don't have any valid pitches
       if (validPitchHistory.length === 0) {
-        return;  // Don't clear existing predictions
+        return; // Don't clear existing predictions
       }
 
       // Ensure we're sending valid PitchType enum values
-      const response = await fetch('http://localhost:8000/api/v1/predict', {
-        method: 'POST',
+      const response = await fetch("http://localhost:8000/api/v1/predict", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           pitcher_id: pitcher.id,
           game_id: pitcher.game.id,
           inning_id: currentInning.id,
-          last_n_pitches: validPitchHistory.map(pitch => PITCH_TYPES[pitch] || pitch),  // Ensure we're sending valid enum values
+          last_n_pitches: validPitchHistory.map(
+            (pitch) => PITCH_TYPES[pitch] || pitch
+          ), // Ensure we're sending valid enum values
           count,
           last_pitch_result: lastPitchContext.pitch_result || null,
           last_play_result: lastPitchContext.play_result || null,
           last_location: lastPitchContext.location || null,
-          hitter_handedness: lastPitchContext.hitter_handedness || 'R'  // Default to 'R' if not set
+          hitter_handedness: lastPitchContext.hitter_handedness || "R", // Default to 'R' if not set
         }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Failed to fetch predictions:', response.status, errorData);
-        return;  // Don't clear existing predictions
+        console.error(
+          "Failed to fetch predictions:",
+          response.status,
+          errorData
+        );
+        return; // Don't clear existing predictions
       }
-      
+
       const data = await response.json();
       setPredictions(data.predictions || []);
     } catch (error) {
-      console.error('Error fetching predictions:', error);
+      console.error("Error fetching predictions:", error);
       // Don't clear existing predictions on error
     }
   };
 
   const fetchRecentPitches = async () => {
     try {
-      console.log('Fetching pitches for pitcher:', pitcher.id, 'in game:', pitcher.game.id);
-      const response = await fetch(`http://localhost:8000/api/v1/pitches/pitcher/${pitcher.id}/game/${pitcher.game.id}`);
-      if (!response.ok) throw new Error('Failed to fetch pitches');
+      console.log(
+        "Fetching pitches for pitcher:",
+        pitcher.id,
+        "in game:",
+        pitcher.game.id
+      );
+      const response = await fetch(
+        `http://localhost:8000/api/v1/pitches/pitcher/${pitcher.id}/game/${pitcher.game.id}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch pitches");
       const data = await response.json();
-      console.log('Received pitches:', data);
-      
+      console.log("Received pitches:", data);
+
       // Fetch inning details for each pitch
       const pitchesWithInnings = await Promise.all(
         data.map(async (pitch) => {
           try {
-            const inningResponse = await fetch(`http://localhost:8000/api/v1/innings/${pitch.inning_id}`);
-            if (!inningResponse.ok) throw new Error('Failed to fetch inning details');
+            const inningResponse = await fetch(
+              `http://localhost:8000/api/v1/innings/${pitch.inning_id}`
+            );
+            if (!inningResponse.ok)
+              throw new Error("Failed to fetch inning details");
             const inning = await inningResponse.json();
             return { ...pitch, inning };
           } catch (error) {
-            console.error('Error fetching inning details:', error);
+            console.error("Error fetching inning details:", error);
             return pitch;
           }
         })
       );
-      
+
       // Sort pitches by sequence number in descending order
-      const sortedPitches = pitchesWithInnings.sort((a, b) => b.sequence_number - a.sequence_number);
-      console.log('Sorted pitches with innings:', sortedPitches);
+      const sortedPitches = pitchesWithInnings.sort(
+        (a, b) => b.sequence_number - a.sequence_number
+      );
+      console.log("Sorted pitches with innings:", sortedPitches);
       setRecentPitches(sortedPitches);
     } catch (error) {
-      console.error('Error fetching pitches:', error);
-      setError('Failed to load pitches. Please try again.');
+      console.error("Error fetching pitches:", error);
+      setError("Failed to load pitches. Please try again.");
     }
   };
 
   const fetchCurrentInning = async () => {
     try {
       // First try to get the existing inning
-      const response = await fetch(`http://localhost:8000/api/v1/innings/game/${pitcher.game.id}`);
-      if (!response.ok) throw new Error('Failed to fetch innings');
-      const innings = await response.json();
-      
-      // Find the current inning or create it if it doesn't exist
-      const existingInning = innings.find(i => 
-        i.inning_number === currentInning.inning_number && 
-        i.half === currentInning.half
+      const response = await fetch(
+        `http://localhost:8000/api/v1/innings/game/${pitcher.game.id}`
       );
-      
+      if (!response.ok) throw new Error("Failed to fetch innings");
+      const innings = await response.json();
+
+      // Find the current inning or create it if it doesn't exist
+      const existingInning = innings.find(
+        (i) =>
+          i.inning_number === currentInning.inning_number &&
+          i.half === currentInning.half
+      );
+
       if (existingInning) {
-        setCurrentInning(prev => ({ ...prev, id: existingInning.id }));
+        setCurrentInning((prev) => ({ ...prev, id: existingInning.id }));
       } else {
         // Create the inning
-        const createResponse = await fetch('http://localhost:8000/api/v1/innings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            game_id: pitcher.game.id,
-            inning_number: 1,
-            half: 'top'
-          }),
-        });
-        
-        if (!createResponse.ok) throw new Error('Failed to create inning');
+        const createResponse = await fetch(
+          "http://localhost:8000/api/v1/innings",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              game_id: pitcher.game.id,
+              inning_number: 1,
+              half: "top",
+            }),
+          }
+        );
+
+        if (!createResponse.ok) throw new Error("Failed to create inning");
         const newInning = await createResponse.json();
-        setCurrentInning(prev => ({ ...prev, id: newInning.id }));
+        setCurrentInning((prev) => ({ ...prev, id: newInning.id }));
       }
     } catch (error) {
-      console.error('Error handling inning:', error);
-      setError('Failed to handle inning. Please try again.');
+      console.error("Error handling inning:", error);
+      setError("Failed to handle inning. Please try again.");
     }
   };
 
   const nextInning = async () => {
-    console.log('Advancing to next inning...');
+    console.log("Advancing to next inning...");
     let newInning;
-    
-    if (currentInning.half === 'top') {
+
+    if (currentInning.half === "top") {
       // If we're in top, go to bottom of same inning
       newInning = {
         ...currentInning,
-        half: 'bottom'
+        half: "bottom",
       };
     } else {
       // If we're in bottom, go to top of next inning
       newInning = {
         inning_number: currentInning.inning_number + 1,
-        half: 'top',
-        id: null
+        half: "top",
+        id: null,
       };
     }
-    
+
     setCurrentInning(newInning);
     await fetchCurrentInning();
-    console.log('Successfully advanced to next inning:', newInning);
+    console.log("Successfully advanced to next inning:", newInning);
   };
 
   const prevInning = async () => {
-    console.log('Going back an inning...');
+    console.log("Going back an inning...");
     let newInning;
-    
-    if (currentInning.half === 'bottom') {
+
+    if (currentInning.half === "bottom") {
       // If we're in bottom, go to top of same inning
       newInning = {
         ...currentInning,
-        half: 'top'
+        half: "top",
       };
     } else if (currentInning.inning_number > 1) {
       // If we're in top and not in inning 1, go to bottom of previous inning
       newInning = {
         inning_number: currentInning.inning_number - 1,
-        half: 'bottom',
-        id: null
+        half: "bottom",
+        id: null,
       };
     } else {
       // If we're in top of inning 1, stay there
       return;
     }
-    
+
     if (newInning !== currentInning) {
       setCurrentInning(newInning);
       await fetchCurrentInning();
-      console.log('Successfully went back to inning:', newInning);
+      console.log("Successfully went back to inning:", newInning);
     }
   };
 
   const initializeGameState = async () => {
+    if (isInitializing) return; // Prevent multiple simultaneous calls
+
     try {
+      setIsInitializing(true);
       if (!pitcher || !pitcher.game) {
-        console.log('No pitcher or game selected yet');
+        console.log("No pitcher or game selected yet");
         return;
       }
 
       // Try to get existing game state
-      const response = await fetch(`http://localhost:8000/api/v1/game-state/${pitcher.game.id}`);
+      const response = await fetch(
+        `http://localhost:8000/api/v1/game-state/${pitcher.game.id}`
+      );
       if (response.ok) {
         const gameState = await response.json();
         setCount(gameState.count);
@@ -360,88 +424,119 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         setCurrentInning({
           inning_number: gameState.inning.inning_number,
           half: gameState.inning.half,
-          id: gameState.inning_id
+          id: gameState.inning_id,
         });
       } else if (response.status === 404) {
         // Get or create the first inning
         let inningId;
-        const inningsResponse = await fetch(`http://localhost:8000/api/v1/games/${pitcher.game.id}/innings`);
+        const inningsResponse = await fetch(
+          `http://localhost:8000/api/v1/games/${pitcher.game.id}/innings`
+        );
         if (inningsResponse.ok) {
           const innings = await inningsResponse.json();
           if (innings.length > 0) {
             inningId = innings[0].id;
           } else {
             // Create first inning if none exists
-            const createInningResponse = await fetch('http://localhost:8000/api/v1/innings', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                game_id: pitcher.game.id,
-                inning_number: 1,
-                half: 'top'
-              }),
-            });
-            
+            const createInningResponse = await fetch(
+              "http://localhost:8000/api/v1/innings",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  game_id: pitcher.game.id,
+                  inning_number: 1,
+                  half: "top",
+                }),
+              }
+            );
+
             if (!createInningResponse.ok) {
-              throw new Error('Failed to create inning');
+              throw new Error("Failed to create inning");
             }
-            
+
             const newInning = await createInningResponse.json();
             inningId = newInning.id;
           }
         }
 
         // Create new game state with the inning ID
-        const createResponse = await fetch('http://localhost:8000/api/v1/game-state', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            game_id: pitcher.game.id,
-            inning_id: inningId,
-            outs: 0,
-            count: '0-0'
-          }),
-        });
-        
+        const createResponse = await fetch(
+          "http://localhost:8000/api/v1/game-state",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              game_id: pitcher.game.id,
+              inning_id: inningId,
+              outs: 0,
+              count: "0-0",
+            }),
+          }
+        );
+
         if (!createResponse.ok) {
-          throw new Error('Failed to create game state');
+          const errorData = await createResponse.json();
+          if (errorData.detail === "Game state already exists for this game") {
+            // If game state was created by another request, fetch it
+            const getResponse = await fetch(
+              `http://localhost:8000/api/v1/game-state/${pitcher.game.id}`
+            );
+            if (getResponse.ok) {
+              const gameState = await getResponse.json();
+              setCount(gameState.count);
+              setOuts(gameState.outs);
+              setCurrentInning({
+                inning_number: gameState.inning.inning_number,
+                half: gameState.inning.half,
+                id: gameState.inning_id,
+              });
+            }
+          } else {
+            throw new Error("Failed to create game state");
+          }
+        } else {
+          const newGameState = await createResponse.json();
+          setCount(newGameState.count);
+          setOuts(newGameState.outs);
+          setCurrentInning({
+            inning_number: newGameState.inning.inning_number,
+            half: newGameState.inning.half,
+            id: newGameState.inning_id,
+          });
         }
-        
-        const newGameState = await createResponse.json();
-        setCount(newGameState.count);
-        setOuts(newGameState.outs);
-        setCurrentInning({
-          inning_number: newGameState.inning.inning_number,
-          half: newGameState.inning.half,
-          id: newGameState.inning_id
-        });
       }
     } catch (error) {
-      console.error('Error initializing game state:', error);
-      setError('Failed to initialize game state. Please try again.');
+      console.error("Error initializing game state:", error);
+      setError("Failed to initialize game state. Please try again.");
+    } finally {
+      setIsInitializing(false);
     }
   };
 
   const updateGameState = async (newCount, newOuts, newInningId) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/game-state/${pitcher.game.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          count: newCount,
-          outs: newOuts,
-          inning_id: newInningId
-        }),
-      });
-      
+      const response = await fetch(
+        `http://localhost:8000/api/v1/game-state/${pitcher.game.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            count: newCount,
+            outs: newOuts,
+            inning_id: newInningId,
+          }),
+        }
+      );
+
       if (!response.ok) {
-        throw new Error('Failed to update game state');
+        throw new Error("Failed to update game state");
       }
 
       const updatedGameState = await response.json();
@@ -451,45 +546,51 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         setCurrentInning({
           inning_number: updatedGameState.inning.inning_number,
           half: updatedGameState.inning.half,
-          id: updatedGameState.inning_id
+          id: updatedGameState.inning_id,
         });
       }
     } catch (error) {
-      console.error('Error updating game state:', error);
-      setError('Failed to update game state. Please try again.');
+      console.error("Error updating game state:", error);
+      setError("Failed to update game state. Please try again.");
     }
   };
 
   const advanceInning = async () => {
     try {
       // Create the next inning
-      const createInningResponse = await fetch('http://localhost:8000/api/v1/innings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          game_id: pitcher.game.id,
-          inning_number: currentInning.half === 'top' ? currentInning.inning_number : currentInning.inning_number + 1,
-          half: currentInning.half === 'top' ? 'bottom' : 'top'
-        }),
-      });
-      
+      const createInningResponse = await fetch(
+        "http://localhost:8000/api/v1/innings",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            game_id: pitcher.game.id,
+            inning_number:
+              currentInning.half === "top"
+                ? currentInning.inning_number
+                : currentInning.inning_number + 1,
+            half: currentInning.half === "top" ? "bottom" : "top",
+          }),
+        }
+      );
+
       if (!createInningResponse.ok) {
-        throw new Error('Failed to create next inning');
+        throw new Error("Failed to create next inning");
       }
-      
+
       const newInning = await createInningResponse.json();
       setCurrentInning({
         inning_number: newInning.inning_number,
         half: newInning.half,
-        id: newInning.id
+        id: newInning.id,
       });
-      
+
       return newInning;
     } catch (error) {
-      console.error('Error advancing inning:', error);
-      setError('Failed to advance inning. Please try again.');
+      console.error("Error advancing inning:", error);
+      setError("Failed to advance inning. Please try again.");
       throw error;
     }
   };
@@ -497,7 +598,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!currentInning.id) {
-      setError('No inning available');
+      setError("No inning available");
       return;
     }
 
@@ -506,10 +607,13 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
       setError(null);
 
       // Get the last pitch for this pitcher in this game to determine sequence number
-      const lastPitchResponse = await fetch(`http://localhost:8000/api/v1/pitches/pitcher/${pitcher.id}?limit=1`);
-      if (!lastPitchResponse.ok) throw new Error('Failed to fetch last pitch');
+      const lastPitchResponse = await fetch(
+        `http://localhost:8000/api/v1/pitches/pitcher/${pitcher.id}?limit=1`
+      );
+      if (!lastPitchResponse.ok) throw new Error("Failed to fetch last pitch");
       const lastPitches = await lastPitchResponse.json();
-      const sequenceNumber = lastPitches.length > 0 ? lastPitches[0].sequence_number + 1 : 1;
+      const sequenceNumber =
+        lastPitches.length > 0 ? lastPitches[0].sequence_number + 1 : 1;
 
       const requestBody = {
         pitcher_id: pitcher.id,
@@ -522,55 +626,60 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         location: formData.location || null,
         pitch_result: formData.pitch_result,
         hitter_handedness: formData.hitter_handedness,
-        ...(formData.pitch_result === PITCH_RESULTS.IN_PLAY && formData.play_result
+        ...(formData.pitch_result === PITCH_RESULTS.IN_PLAY &&
+        formData.play_result
           ? { play_result: formData.play_result }
           : {}),
-        notes: formData.notes
+        notes: formData.notes,
       };
-      
-      console.log('Logging pitch:', requestBody);
-      const response = await fetch('http://localhost:8000/api/v1/pitches', {
-        method: 'POST',
+
+      console.log("Logging pitch:", requestBody);
+      const response = await fetch("http://localhost:8000/api/v1/pitches", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to log pitch');
+        throw new Error(errorData.detail || "Failed to log pitch");
       }
-      
+
       const loggedPitch = await response.json();
-      console.log('Pitch logged successfully:', loggedPitch);
-      
+      console.log("Pitch logged successfully:", loggedPitch);
+
       // Update pitch history
-      setPitchHistory(prev => [...prev, formData.pitch_type].slice(-3));
-      
+      setPitchHistory((prev) => [...prev, formData.pitch_type].slice(-3));
+
       // Update last pitch context
       setLastPitchContext({
         pitch_result: formData.pitch_result,
         play_result: formData.play_result,
         location: formData.location,
-        hitter_handedness: formData.hitter_handedness
+        hitter_handedness: formData.hitter_handedness,
       });
-      
+
       // Calculate new count and outs
-      const [balls, strikes] = count.split('-').map(Number);
+      const [balls, strikes] = count.split("-").map(Number);
       let newCount = count;
       let newOuts = outs;
       let newInningId = currentInning.id;
 
       if (formData.pitch_result === PITCH_RESULTS.BALL) {
         if (balls + 1 >= 4) {
-          newCount = '0-0'; // Walk
+          newCount = "0-0"; // Walk
         } else {
           newCount = `${balls + 1}-${strikes}`;
         }
-      } else if ([PITCH_RESULTS.SWINGING_STRIKE, PITCH_RESULTS.CALLED_STRIKE].includes(formData.pitch_result)) {
+      } else if (
+        [PITCH_RESULTS.SWINGING_STRIKE, PITCH_RESULTS.CALLED_STRIKE].includes(
+          formData.pitch_result
+        )
+      ) {
         if (strikes + 1 >= 3) {
-          newCount = '0-0'; // Strikeout
+          newCount = "0-0"; // Strikeout
           newOuts = (outs + 1) % 3;
           if (newOuts === 0) {
             // Advance inning
@@ -586,15 +695,21 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         }
       } else if (formData.pitch_result === PITCH_RESULTS.IN_PLAY) {
         if (formData.play_result === PLAY_RESULTS.STRIKEOUT) {
-          newCount = '0-0';
+          newCount = "0-0";
           newOuts = (outs + 1) % 3;
           if (newOuts === 0) {
             // Advance inning
             const newInning = await advanceInning();
             newInningId = newInning.id;
           }
-        } else if ([PLAY_RESULTS.GROUNDOUT, PLAY_RESULTS.FLYOUT, PLAY_RESULTS.SACRIFICE].includes(formData.play_result)) {
-          newCount = '0-0';
+        } else if (
+          [
+            PLAY_RESULTS.GROUNDOUT,
+            PLAY_RESULTS.FLYOUT,
+            PLAY_RESULTS.SACRIFICE,
+          ].includes(formData.play_result)
+        ) {
+          newCount = "0-0";
           newOuts = (outs + 1) % 3;
           if (newOuts === 0) {
             // Advance inning
@@ -602,41 +717,42 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
             newInningId = newInning.id;
           }
         } else {
-          newCount = '0-0';
+          newCount = "0-0";
         }
       }
 
       // Update game state in database
       await updateGameState(newCount, newOuts, newInningId);
-      
+
       // Update local state
       setCount(newCount);
       setOuts(newOuts);
       if (newInningId !== currentInning.id) {
         setCurrentInning({
-          inning_number: currentInning.inning_number + (currentInning.half === 'top' ? 0 : 1),
-          half: currentInning.half === 'top' ? 'bottom' : 'top',
-          id: newInningId
+          inning_number:
+            currentInning.inning_number +
+            (currentInning.half === "top" ? 0 : 1),
+          half: currentInning.half === "top" ? "bottom" : "top",
+          id: newInningId,
         });
       }
-      
+
       // Clear form data
       setFormData({
-        pitch_type: '',
-        location: '',
-        pitch_result: '',
-        play_result: '',
+        pitch_type: "",
+        location: "",
+        pitch_result: "",
+        play_result: "",
         hitter_handedness: formData.hitter_handedness,
-        notes: ''
+        notes: "",
       });
 
       // Fetch updated recent pitches and predictions
       await fetchRecentPitches();
       await fetchPredictions();
-      
     } catch (error) {
-      console.error('Error logging pitch:', error);
-      setError(error.message || 'Failed to log pitch. Please try again.');
+      console.error("Error logging pitch:", error);
+      setError(error.message || "Failed to log pitch. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -645,7 +761,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   // Add useEffect to fetch recent pitches when pitcher changes
   useEffect(() => {
     if (pitcher?.id) {
-      console.log('Pitcher changed, fetching recent pitches...');
+      console.log("Pitcher changed, fetching recent pitches...");
       fetchRecentPitches();
     }
   }, [pitcher?.id]);
@@ -653,30 +769,30 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   // Add useEffect to fetch recent pitches when currentInning changes
   useEffect(() => {
     if (pitcher?.id && currentInning?.inning_number) {
-      console.log('Inning changed, fetching recent pitches...');
+      console.log("Inning changed, fetching recent pitches...");
       fetchRecentPitches();
     }
   }, [currentInning?.inning_number]);
 
   const renderStrikeZone = () => {
-    const rows = ['high', 'middle', 'low'];
-    const cols = ['in', 'middle', 'away'];
-    
+    const rows = ["high", "middle", "low"];
+    const cols = ["in", "middle", "away"];
+
     return (
       <div className="flex flex-col items-center gap-4">
         <div className="flex items-center gap-4">
           <button
             type="button"
-            onClick={() => setFormData({ ...formData, hitter_handedness: 'R' })}
+            onClick={() => setFormData({ ...formData, hitter_handedness: "R" })}
             className={`px-3 py-2 rounded ${
-              formData.hitter_handedness === 'R'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              formData.hitter_handedness === "R"
+                ? "bg-primary-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             Righty
           </button>
-          
+
           <div className="w-48 aspect-[4/3] border-2 border-gray-400 rounded-lg overflow-hidden">
             <div className="grid grid-rows-3 grid-cols-3 h-full">
               {rows.map((row) =>
@@ -690,13 +806,17 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                       onClick={() => setFormData({ ...formData, location })}
                       className={`
                         border border-gray-300 transition-colors
-                        ${isSelected ? 'bg-primary-600 text-white' : 'bg-white hover:bg-gray-50'}
-                        ${row === 'high' ? 'border-t-0' : ''}
-                        ${row === 'low' ? 'border-b-0' : ''}
-                        ${col === 'in' ? 'border-l-0' : ''}
-                        ${col === 'away' ? 'border-r-0' : ''}
+                        ${
+                          isSelected
+                            ? "bg-primary-600 text-white"
+                            : "bg-white hover:bg-gray-50"
+                        }
+                        ${row === "high" ? "border-t-0" : ""}
+                        ${row === "low" ? "border-b-0" : ""}
+                        ${col === "in" ? "border-l-0" : ""}
+                        ${col === "away" ? "border-r-0" : ""}
                       `}
-                      title={location.replace('_', ' ')}
+                      title={location.replace("_", " ")}
                     />
                   );
                 })
@@ -706,11 +826,11 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
 
           <button
             type="button"
-            onClick={() => setFormData({ ...formData, hitter_handedness: 'L' })}
+            onClick={() => setFormData({ ...formData, hitter_handedness: "L" })}
             className={`px-3 py-2 rounded ${
-              formData.hitter_handedness === 'L'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              formData.hitter_handedness === "L"
+                ? "bg-primary-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             Lefty
@@ -721,9 +841,9 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   };
 
   const renderPredictionStrikeZone = (location) => {
-    const rows = ['high', 'middle', 'low'];
-    const cols = ['in', 'middle', 'away'];
-    
+    const rows = ["high", "middle", "low"];
+    const cols = ["in", "middle", "away"];
+
     return (
       <div className="w-32 aspect-[4/3] border-2 border-gray-400 rounded-lg overflow-hidden">
         <div className="grid grid-rows-3 grid-cols-3 h-full">
@@ -736,13 +856,13 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                   key={zoneLocation}
                   className={`
                     border border-gray-300 transition-colors
-                    ${isSelected ? 'bg-primary-600' : 'bg-white'}
-                    ${row === 'high' ? 'border-t-0' : ''}
-                    ${row === 'low' ? 'border-b-0' : ''}
-                    ${col === 'in' ? 'border-l-0' : ''}
-                    ${col === 'away' ? 'border-r-0' : ''}
+                    ${isSelected ? "bg-primary-600" : "bg-white"}
+                    ${row === "high" ? "border-t-0" : ""}
+                    ${row === "low" ? "border-b-0" : ""}
+                    ${col === "in" ? "border-l-0" : ""}
+                    ${col === "away" ? "border-r-0" : ""}
                   `}
-                  title={zoneLocation.replace('_', ' ')}
+                  title={zoneLocation.replace("_", " ")}
                 />
               );
             })
@@ -753,9 +873,9 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   };
 
   const renderSmallStrikeZone = (location) => {
-    const rows = ['high', 'middle', 'low'];
-    const cols = ['in', 'middle', 'away'];
-    
+    const rows = ["high", "middle", "low"];
+    const cols = ["in", "middle", "away"];
+
     return (
       <div className="w-16 aspect-[4/3] border border-gray-300 rounded overflow-hidden">
         <div className="grid grid-rows-3 grid-cols-3 h-full">
@@ -768,13 +888,13 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                   key={zoneLocation}
                   className={`
                     border border-gray-200 transition-colors
-                    ${isSelected ? 'bg-primary-600' : 'bg-white'}
-                    ${row === 'high' ? 'border-t-0' : ''}
-                    ${row === 'low' ? 'border-b-0' : ''}
-                    ${col === 'in' ? 'border-l-0' : ''}
-                    ${col === 'away' ? 'border-r-0' : ''}
+                    ${isSelected ? "bg-primary-600" : "bg-white"}
+                    ${row === "high" ? "border-t-0" : ""}
+                    ${row === "low" ? "border-b-0" : ""}
+                    ${col === "in" ? "border-l-0" : ""}
+                    ${col === "away" ? "border-r-0" : ""}
                   `}
-                  title={zoneLocation.replace('_', ' ')}
+                  title={zoneLocation.replace("_", " ")}
                 />
               );
             })
@@ -790,7 +910,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
       if (currentGame) {
         const updatedPitcher = {
           ...selectedPitcher,
-          game: currentGame
+          game: currentGame,
         };
         setPitcher(updatedPitcher);
         setShowPitcherSelect(false);
@@ -802,14 +922,14 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         setShowPitcherSelect(false);
         onPitcherChange(selectedPitcher);
         // Reset game state only when starting a new game
-        setCount('0-0');
+        setCount("0-0");
         setOuts(0);
-        setCurrentInning({ inning_number: 1, half: 'top', id: null });
-        setShouldInitializeGame(true);  // Allow initialization for new game
+        setCurrentInning({ inning_number: 1, half: "top", id: null });
+        setShouldInitializeGame(true); // Allow initialization for new game
       }
     } catch (error) {
-      console.error('Error selecting pitcher:', error);
-      setError('Failed to select pitcher. Please try again.');
+      console.error("Error selecting pitcher:", error);
+      setError("Failed to select pitcher. Please try again.");
     }
   };
 
@@ -833,7 +953,9 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   if (!pitcher.game && !currentGame) {
     return (
       <div className="text-center py-12">
-        <div className="text-red-600 mb-4">No game data available. Please start a new game.</div>
+        <div className="text-red-600 mb-4">
+          No game data available. Please start a new game.
+        </div>
         <button
           onClick={() => {
             setShowPitcherSelect(true);
@@ -892,7 +1014,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setOuts(prev => (prev - 1 + 3) % 3)}
+                onClick={() => setOuts((prev) => (prev - 1 + 3) % 3)}
                 className="btn btn-secondary text-sm"
                 title="Decrease Outs"
               >
@@ -903,7 +1025,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                 <div className="text-lg font-bold">{outs}</div>
               </div>
               <button
-                onClick={() => setOuts(prev => (prev + 1) % 3)}
+                onClick={() => setOuts((prev) => (prev + 1) % 3)}
                 className="btn btn-secondary text-sm"
                 title="Increase Outs"
               >
@@ -922,7 +1044,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                 <div className="text-sm font-medium">
                   <div className="flex items-center gap-1">
                     <span>{currentInning.inning_number}</span>
-                    {currentInning.half === 'top' ? (
+                    {currentInning.half === "top" ? (
                       <ArrowUpIcon className="h-4 w-4 text-gray-400" />
                     ) : (
                       <ArrowDownIcon className="h-4 w-4 text-gray-400" />
@@ -961,7 +1083,9 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                   className="w-full p-3 text-left hover:bg-gray-50 rounded-lg border border-gray-200"
                 >
                   <div className="font-medium">{p.name}</div>
-                  <div className="text-sm text-gray-600">{p.team} • #{p.number}</div>
+                  <div className="text-sm text-gray-600">
+                    {p.team} • #{p.number}
+                  </div>
                 </button>
               ))}
               <button
@@ -992,31 +1116,43 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
             <h3 className="text-lg font-medium mb-4">Create New Pitcher</h3>
             <form onSubmit={handleCreatePitcher} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Name
+                </label>
                 <input
                   type="text"
                   value={newPitcher.name}
-                  onChange={(e) => setNewPitcher({ ...newPitcher, name: e.target.value })}
+                  onChange={(e) =>
+                    setNewPitcher({ ...newPitcher, name: e.target.value })
+                  }
                   className="input mt-1 w-full"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Team</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Team
+                </label>
                 <input
                   type="text"
                   value={newPitcher.team}
-                  onChange={(e) => setNewPitcher({ ...newPitcher, team: e.target.value })}
+                  onChange={(e) =>
+                    setNewPitcher({ ...newPitcher, team: e.target.value })
+                  }
                   className="input mt-1 w-full"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Number</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Number
+                </label>
                 <input
                   type="number"
                   value={newPitcher.number}
-                  onChange={(e) => setNewPitcher({ ...newPitcher, number: e.target.value })}
+                  onChange={(e) =>
+                    setNewPitcher({ ...newPitcher, number: e.target.value })
+                  }
                   className="input mt-1 w-full"
                   min="0"
                   max="99"
@@ -1024,26 +1160,28 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Throwing Hand</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Throwing Hand
+                </label>
                 <div className="mt-1 flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setNewPitcher({ ...newPitcher, hand: 'R' })}
+                    onClick={() => setNewPitcher({ ...newPitcher, hand: "R" })}
                     className={`flex-1 p-2 rounded ${
-                      newPitcher.hand === 'R'
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      newPitcher.hand === "R"
+                        ? "bg-primary-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     Right
                   </button>
                   <button
                     type="button"
-                    onClick={() => setNewPitcher({ ...newPitcher, hand: 'L' })}
+                    onClick={() => setNewPitcher({ ...newPitcher, hand: "L" })}
                     className={`flex-1 p-2 rounded ${
-                      newPitcher.hand === 'L'
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      newPitcher.hand === "L"
+                        ? "bg-primary-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     Left
@@ -1051,11 +1189,15 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Age</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Age
+                </label>
                 <input
                   type="number"
                   value={newPitcher.age}
-                  onChange={(e) => setNewPitcher({ ...newPitcher, age: e.target.value })}
+                  onChange={(e) =>
+                    setNewPitcher({ ...newPitcher, age: e.target.value })
+                  }
                   className="input mt-1 w-full"
                   min="0"
                   max="100"
@@ -1063,10 +1205,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                 />
               </div>
               <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 btn btn-primary"
-                >
+                <button type="submit" className="flex-1 btn btn-primary">
                   Create
                 </button>
                 <button
@@ -1090,17 +1229,32 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
           <h3 className="text-lg font-medium mb-4">Log Pitch</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Count</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Count
+              </label>
               <div className="mt-1 grid grid-cols-4 gap-1">
-                {['0-0', '1-0', '2-0', '3-0', '0-1', '1-1', '2-1', '3-1', '0-2', '1-2', '2-2', '3-2'].map((c) => (
+                {[
+                  "0-0",
+                  "1-0",
+                  "2-0",
+                  "3-0",
+                  "0-1",
+                  "1-1",
+                  "2-1",
+                  "3-1",
+                  "0-2",
+                  "1-2",
+                  "2-2",
+                  "3-2",
+                ].map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setCount(c)}
                     className={`px-2 py-1 text-sm rounded ${
                       count === c
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? "bg-primary-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     {c}
@@ -1110,17 +1264,21 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Pitch Type</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Pitch Type
+              </label>
               <div className="mt-1 grid grid-cols-3 gap-2">
                 {Object.entries(PITCH_TYPES).map(([key, value]) => (
                   <button
                     key={value}
                     type="button"
-                    onClick={() => setFormData({ ...formData, pitch_type: value })}
+                    onClick={() =>
+                      setFormData({ ...formData, pitch_type: value })
+                    }
                     className={`p-2 rounded ${
                       formData.pitch_type === value
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? "bg-primary-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     {PITCH_TYPE_DISPLAY[key]}
@@ -1130,28 +1288,36 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Location
+              </label>
               {renderStrikeZone()}
               <div className="mt-2 text-sm text-gray-500 text-center w-48 mx-auto">
-                {formData.location ? formData.location.replace('_', ' ') : 'Select a location (Catcher\'s View)'}
+                {formData.location
+                  ? formData.location.replace("_", " ")
+                  : "Select a location (Catcher's View)"}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Pitch Result</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Pitch Result
+              </label>
               <div className="mt-1 grid grid-cols-2 gap-2">
                 {Object.entries(PITCH_RESULTS).map(([key, value]) => (
                   <button
                     key={value}
                     type="button"
-                    onClick={() => setFormData({ ...formData, pitch_result: value })}
+                    onClick={() =>
+                      setFormData({ ...formData, pitch_result: value })
+                    }
                     className={`p-2 rounded ${
                       formData.pitch_result === value
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? "bg-primary-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
-                    {key.toLowerCase().replace('_', ' ')}
+                    {key.toLowerCase().replace("_", " ")}
                   </button>
                 ))}
               </div>
@@ -1159,20 +1325,24 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
 
             {formData.pitch_result === PITCH_RESULTS.IN_PLAY && (
               <div>
-                <label className="block text-sm font-medium text-gray-700">Play Result</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Play Result
+                </label>
                 <div className="mt-1 grid grid-cols-2 gap-2">
                   {Object.entries(PLAY_RESULTS).map(([key, value]) => (
                     <button
                       key={value}
                       type="button"
-                      onClick={() => setFormData({ ...formData, play_result: value })}
+                      onClick={() =>
+                        setFormData({ ...formData, play_result: value })
+                      }
                       className={`p-2 rounded ${
                         formData.play_result === value
-                          ? 'bg-primary-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? "bg-primary-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                     >
-                      {key.toLowerCase().replace('_', ' ')}
+                      {key.toLowerCase().replace("_", " ")}
                     </button>
                   ))}
                 </div>
@@ -1180,10 +1350,14 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Notes</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Notes
+              </label>
               <textarea
                 value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
                 className="input mt-1"
                 rows={3}
                 placeholder="Optional notes about the pitch..."
@@ -1193,9 +1367,11 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
             <button
               type="submit"
               className="btn btn-primary w-full"
-              disabled={!formData.pitch_type || !formData.pitch_result || loading}
+              disabled={
+                !formData.pitch_type || !formData.pitch_result || loading
+              }
             >
-              {loading ? 'Logging...' : 'Log Pitch'}
+              {loading ? "Logging..." : "Log Pitch"}
             </button>
           </form>
         </div>
@@ -1208,15 +1384,21 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                 {predictions.map((prediction, index) => (
                   <div key={index} className="flex items-center gap-4">
                     <div className="flex-1">
-                      <div className="font-medium">{PITCH_TYPE_DISPLAY[prediction.pitch_type]}</div>
+                      <div className="font-medium">
+                        {PITCH_TYPE_DISPLAY[prediction.pitch_type]}
+                      </div>
                       <div className="text-sm text-gray-600 space-y-1">
-                        <div>Pitch Type Probability: {Math.round(prediction.confidence * 100)}%</div>
-                        <div>Location Probability: {Math.round(prediction.location_confidence * 100)}%</div>
+                        <div>
+                          Pitch Type Probability:{" "}
+                          {Math.round(prediction.confidence * 100)}%
+                        </div>
+                        <div>
+                          Location Probability:{" "}
+                          {Math.round(prediction.location_confidence * 100)}%
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      {renderPredictionStrikeZone(prediction.location)}
-                    </div>
+                    <div>{renderPredictionStrikeZone(prediction.location)}</div>
                   </div>
                 ))}
               </div>
@@ -1231,25 +1413,46 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
                       #
                     </th>
-                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
                       Inning
                     </th>
-                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
                       Count
                     </th>
-                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
                       Pitch Type
                     </th>
-                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
                       Location
                     </th>
-                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
                       Pitch Result
                     </th>
-                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
                       Play Result
                     </th>
                   </tr>
@@ -1264,59 +1467,73 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
                         {pitch.inning ? (
                           <div className="flex items-center gap-1">
                             <span>{pitch.inning.inning_number}</span>
-                            {pitch.inning.half === 'top' ? (
+                            {pitch.inning.half === "top" ? (
                               <ArrowUpIcon className="h-4 w-4 text-gray-400" />
                             ) : (
                               <ArrowDownIcon className="h-4 w-4 text-gray-400" />
                             )}
                           </div>
-                        ) : '-'}
+                        ) : (
+                          "-"
+                        )}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                         {pitch.count}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                        {PITCH_TYPE_DISPLAY[pitch.pitch_type] || pitch.pitch_type}
+                        {PITCH_TYPE_DISPLAY[pitch.pitch_type] ||
+                          pitch.pitch_type}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                         {pitch.location ? (
                           <div className="flex items-center gap-2">
                             {renderSmallStrikeZone(pitch.location)}
                             <span className="text-xs text-gray-400">
-                              {pitch.location.replace('_', ' ')}
+                              {pitch.location.replace("_", " ")}
                             </span>
                           </div>
-                        ) : '-'}
+                        ) : (
+                          "-"
+                        )}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                        {PITCH_RESULT_DISPLAY[pitch.pitch_result] || pitch.pitch_result}
+                        {PITCH_RESULT_DISPLAY[pitch.pitch_result] ||
+                          pitch.pitch_result}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                         {pitch.play_result ? (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            pitch.play_result === 'homerun'
-                              ? 'bg-red-100 text-red-800'
-                              : pitch.play_result === 'triple'
-                              ? 'bg-orange-100 text-orange-800'
-                              : pitch.play_result === 'double'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : pitch.play_result === 'single'
-                              ? 'bg-green-100 text-green-800'
-                              : pitch.play_result === 'error'
-                              ? 'bg-red-100 text-red-800'
-                              : pitch.play_result === 'sacrifice'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {PLAY_RESULT_DISPLAY[pitch.play_result] || pitch.play_result}
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                              pitch.play_result === "homerun"
+                                ? "bg-red-100 text-red-800"
+                                : pitch.play_result === "triple"
+                                ? "bg-orange-100 text-orange-800"
+                                : pitch.play_result === "double"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : pitch.play_result === "single"
+                                ? "bg-green-100 text-green-800"
+                                : pitch.play_result === "error"
+                                ? "bg-red-100 text-red-800"
+                                : pitch.play_result === "sacrifice"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {PLAY_RESULT_DISPLAY[pitch.play_result] ||
+                              pitch.play_result}
                           </span>
-                        ) : (pitch.pitch_result === 'swinging_strike' || pitch.pitch_result === 'called_strike') && (
-                          pitch.count === '0-2' || pitch.count === '1-2' || pitch.count === '2-2' || pitch.count === '3-2'
-                        ) ? (
+                        ) : (pitch.pitch_result === "swinging_strike" ||
+                            pitch.pitch_result === "called_strike") &&
+                          (pitch.count === "0-2" ||
+                            pitch.count === "1-2" ||
+                            pitch.count === "2-2" ||
+                            pitch.count === "3-2") ? (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                             K
                           </span>
-                        ) : '-'}
+                        ) : (
+                          "-"
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -1330,4 +1547,4 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   );
 }
 
-export default PitchLogging; 
+export default PitchLogging;
