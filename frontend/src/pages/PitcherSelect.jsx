@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect } from "react";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import { API_ENDPOINTS } from "../config/api";
 
 function PitcherSelect({ onSelect }) {
   const [pitchers, setPitchers] = useState([]);
@@ -9,11 +10,11 @@ function PitcherSelect({ onSelect }) {
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    team: '',
-    number: '',
-    hand: 'R',
-    age: ''
+    name: "",
+    team: "",
+    number: "",
+    hand: "R",
+    age: "",
   });
 
   useEffect(() => {
@@ -23,13 +24,13 @@ function PitcherSelect({ onSelect }) {
 
   const fetchPitchers = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/pitchers/');
-      if (!response.ok) throw new Error('Failed to fetch pitchers');
+      const response = await fetch(API_ENDPOINTS.PITCHERS);
+      if (!response.ok) throw new Error("Failed to fetch pitchers");
       const data = await response.json();
       setPitchers(data);
     } catch (error) {
-      console.error('Error fetching pitchers:', error);
-      setError('Failed to load pitchers. Please try again.');
+      console.error("Error fetching pitchers:", error);
+      setError("Failed to load pitchers. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -37,60 +38,60 @@ function PitcherSelect({ onSelect }) {
 
   const fetchGames = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/games/');
-      if (!response.ok) throw new Error('Failed to fetch games');
+      const response = await fetch(API_ENDPOINTS.GAMES);
+      if (!response.ok) throw new Error("Failed to fetch games");
       const data = await response.json();
       setGames(data);
     } catch (error) {
-      console.error('Error fetching games:', error);
-      setError('Failed to load games. Please try again.');
+      console.error("Error fetching games:", error);
+      setError("Failed to load games. Please try again.");
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:8000/api/v1/pitchers/', {
-        method: 'POST',
+      const response = await fetch(API_ENDPOINTS.PITCHERS, {
+        method: "POST",
         headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
+          Accept: "application/json",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to create pitcher');
+        throw new Error(errorData.detail || "Failed to create pitcher");
       }
-      
+
       const newPitcher = await response.json();
       setPitchers([...pitchers, newPitcher]);
       setShowForm(false);
       setFormData({
-        name: '',
-        team: '',
-        number: '',
-        hand: 'R',
-        age: ''
+        name: "",
+        team: "",
+        number: "",
+        hand: "R",
+        age: "",
       });
     } catch (error) {
-      console.error('Error creating pitcher:', error);
-      setError(error.message || 'Failed to create pitcher. Please try again.');
+      console.error("Error creating pitcher:", error);
+      setError(error.message || "Failed to create pitcher. Please try again.");
     }
   };
 
   const handlePitcherSelect = (pitcher) => {
     if (!selectedGame) {
-      setError('Please select a game first');
+      setError("Please select a game first");
       return;
     }
     onSelect({ ...pitcher, game: selectedGame });
   };
 
   const formatHandedness = (handedness) => {
-    if (!handedness) return 'Unknown';
-    return handedness.charAt(0).toUpperCase() + handedness.slice(1) + '-handed';
+    if (!handedness) return "Unknown";
+    return handedness.charAt(0).toUpperCase() + handedness.slice(1) + "-handed";
   };
 
   return (
@@ -115,31 +116,43 @@ function PitcherSelect({ onSelect }) {
       {showForm && (
         <form onSubmit={handleSubmit} className="card space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Name</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Name
+            </label>
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               className="input mt-1"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Team</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Team
+            </label>
             <input
               type="text"
               value={formData.team}
-              onChange={(e) => setFormData({ ...formData, team: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, team: e.target.value })
+              }
               className="input mt-1"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Number</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Number
+            </label>
             <input
               type="number"
               value={formData.number}
-              onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, number: e.target.value })
+              }
               className="input mt-1"
               min="0"
               max="99"
@@ -147,26 +160,28 @@ function PitcherSelect({ onSelect }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Throwing Hand</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Throwing Hand
+            </label>
             <div className="mt-1 flex gap-2">
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, hand: 'R' })}
+                onClick={() => setFormData({ ...formData, hand: "R" })}
                 className={`flex-1 p-2 rounded ${
-                  formData.hand === 'R'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  formData.hand === "R"
+                    ? "bg-primary-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 Right
               </button>
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, hand: 'L' })}
+                onClick={() => setFormData({ ...formData, hand: "L" })}
                 className={`flex-1 p-2 rounded ${
-                  formData.hand === 'L'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  formData.hand === "L"
+                    ? "bg-primary-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 Left
@@ -174,11 +189,15 @@ function PitcherSelect({ onSelect }) {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Age</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Age
+            </label>
             <input
               type="number"
               value={formData.age}
-              onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, age: e.target.value })
+              }
               className="input mt-1"
               min="0"
               max="100"
@@ -208,7 +227,9 @@ function PitcherSelect({ onSelect }) {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             </div>
           ) : games.length === 0 ? (
-            <p className="text-gray-600">No games available. Create a game first.</p>
+            <p className="text-gray-600">
+              No games available. Create a game first.
+            </p>
           ) : (
             <div className="space-y-2">
               {games.map((game) => (
@@ -217,11 +238,13 @@ function PitcherSelect({ onSelect }) {
                   onClick={() => setSelectedGame(game)}
                   className={`w-full text-left p-3 rounded-lg transition-colors ${
                     selectedGame?.id === game.id
-                      ? 'bg-primary-50 border-primary-200'
-                      : 'hover:bg-gray-50'
+                      ? "bg-primary-50 border-primary-200"
+                      : "hover:bg-gray-50"
                   }`}
                 >
-                  <div className="font-medium">{game.home_team} vs {game.away_team}</div>
+                  <div className="font-medium">
+                    {game.home_team} vs {game.away_team}
+                  </div>
                   <div className="text-sm text-gray-600">
                     {new Date(game.date).toLocaleDateString()}
                   </div>
@@ -243,7 +266,9 @@ function PitcherSelect({ onSelect }) {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             </div>
           ) : pitchers.length === 0 ? (
-            <p className="text-gray-600">No pitchers found. Create one to get started!</p>
+            <p className="text-gray-600">
+              No pitchers found. Create one to get started!
+            </p>
           ) : (
             <div className="space-y-2">
               {pitchers.map((pitcher) => (
@@ -266,4 +291,4 @@ function PitcherSelect({ onSelect }) {
   );
 }
 
-export default PitcherSelect; 
+export default PitcherSelect;

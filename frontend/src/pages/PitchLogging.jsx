@@ -9,6 +9,7 @@ import {
   ChevronDownIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
+import { API_ENDPOINTS } from "../config/api";
 
 // Match backend enums exactly
 const PITCH_TYPES = {
@@ -168,7 +169,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
 
   const fetchPitchers = async () => {
     try {
-      const response = await fetch("http://localhost:8000/api/v1/pitchers");
+      const response = await fetch(API_ENDPOINTS.PITCHERS);
       if (!response.ok) throw new Error("Failed to fetch pitchers");
       const data = await response.json();
       setAvailablePitchers(data);
@@ -181,7 +182,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   const handleCreatePitcher = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:8000/api/v1/pitchers", {
+      const response = await fetch(API_ENDPOINTS.PITCHERS, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -211,18 +212,15 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
 
   const fetchPredictions = async () => {
     try {
-      // Only send valid pitch types from the history
       const validPitchHistory = pitchHistory
         .filter((pitch) => Object.values(PITCH_TYPES).includes(pitch))
-        .slice(-3); // Send last 3 pitches
+        .slice(-3);
 
-      // Don't fetch predictions if we don't have any valid pitches
       if (validPitchHistory.length === 0) {
-        return; // Don't clear existing predictions
+        return;
       }
 
-      // Ensure we're sending valid PitchType enum values
-      const response = await fetch("http://localhost:8000/api/v1/predict", {
+      const response = await fetch(API_ENDPOINTS.PREDICT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -233,12 +231,12 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
           inning_id: currentInning.id,
           last_n_pitches: validPitchHistory.map(
             (pitch) => PITCH_TYPES[pitch] || pitch
-          ), // Ensure we're sending valid enum values
+          ),
           count,
           last_pitch_result: lastPitchContext.pitch_result || null,
           last_play_result: lastPitchContext.play_result || null,
           last_location: lastPitchContext.location || null,
-          hitter_handedness: lastPitchContext.hitter_handedness || "R", // Default to 'R' if not set
+          hitter_handedness: lastPitchContext.hitter_handedness || "R",
         }),
       });
 
@@ -249,14 +247,13 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
           response.status,
           errorData
         );
-        return; // Don't clear existing predictions
+        return;
       }
 
       const data = await response.json();
       setPredictions(data.predictions || []);
     } catch (error) {
       console.error("Error fetching predictions:", error);
-      // Don't clear existing predictions on error
     }
   };
 
@@ -269,18 +266,17 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         pitcher.game.id
       );
       const response = await fetch(
-        `http://localhost:8000/api/v1/pitches/pitcher/${pitcher.id}/game/${pitcher.game.id}`
+        `${API_ENDPOINTS.PITCHES}/pitcher/${pitcher.id}/game/${pitcher.game.id}`
       );
       if (!response.ok) throw new Error("Failed to fetch pitches");
       const data = await response.json();
       console.log("Received pitches:", data);
 
-      // Fetch inning details for each pitch
       const pitchesWithInnings = await Promise.all(
         data.map(async (pitch) => {
           try {
             const inningResponse = await fetch(
-              `http://localhost:8000/api/v1/innings/${pitch.inning_id}`
+              `${API_ENDPOINTS.INNINGS}/${pitch.inning_id}`
             );
             if (!inningResponse.ok)
               throw new Error("Failed to fetch inning details");
@@ -293,7 +289,6 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         })
       );
 
-      // Sort pitches by sequence number in descending order
       const sortedPitches = pitchesWithInnings.sort(
         (a, b) => b.sequence_number - a.sequence_number
       );
@@ -307,14 +302,12 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
 
   const fetchCurrentInning = async () => {
     try {
-      // First try to get the existing inning
       const response = await fetch(
-        `http://localhost:8000/api/v1/innings/game/${pitcher.game.id}`
+        `${API_ENDPOINTS.INNINGS}/game/${pitcher.game.id}`
       );
       if (!response.ok) throw new Error("Failed to fetch innings");
       const innings = await response.json();
 
-      // Find the current inning or create it if it doesn't exist
       const existingInning = innings.find(
         (i) =>
           i.inning_number === currentInning.inning_number &&
@@ -324,21 +317,17 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
       if (existingInning) {
         setCurrentInning((prev) => ({ ...prev, id: existingInning.id }));
       } else {
-        // Create the inning
-        const createResponse = await fetch(
-          "http://localhost:8000/api/v1/innings",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              game_id: pitcher.game.id,
-              inning_number: 1,
-              half: "top",
-            }),
-          }
-        );
+        const createResponse = await fetch(API_ENDPOINTS.INNINGS, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            game_id: pitcher.game.id,
+            inning_number: 1,
+            half: "top",
+          }),
+        });
 
         if (!createResponse.ok) throw new Error("Failed to create inning");
         const newInning = await createResponse.json();
@@ -404,7 +393,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   };
 
   const initializeGameState = async () => {
-    if (isInitializing) return; // Prevent multiple simultaneous calls
+    if (isInitializing) return;
 
     try {
       setIsInitializing(true);
@@ -413,9 +402,8 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         return;
       }
 
-      // Try to get existing game state
       const response = await fetch(
-        `http://localhost:8000/api/v1/game-state/${pitcher.game.id}`
+        `${API_ENDPOINTS.GAME_STATE}/${pitcher.game.id}`
       );
       if (response.ok) {
         const gameState = await response.json();
@@ -427,31 +415,26 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
           id: gameState.inning_id,
         });
       } else if (response.status === 404) {
-        // Get or create the first inning
         let inningId;
         const inningsResponse = await fetch(
-          `http://localhost:8000/api/v1/games/${pitcher.game.id}/innings`
+          `${API_ENDPOINTS.INNINGS}/game/${pitcher.game.id}`
         );
         if (inningsResponse.ok) {
           const innings = await inningsResponse.json();
           if (innings.length > 0) {
             inningId = innings[0].id;
           } else {
-            // Create first inning if none exists
-            const createInningResponse = await fetch(
-              "http://localhost:8000/api/v1/innings",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  game_id: pitcher.game.id,
-                  inning_number: 1,
-                  half: "top",
-                }),
-              }
-            );
+            const createInningResponse = await fetch(API_ENDPOINTS.INNINGS, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                game_id: pitcher.game.id,
+                inning_number: 1,
+                half: "top",
+              }),
+            });
 
             if (!createInningResponse.ok) {
               throw new Error("Failed to create inning");
@@ -462,29 +445,24 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
           }
         }
 
-        // Create new game state with the inning ID
-        const createResponse = await fetch(
-          "http://localhost:8000/api/v1/game-state",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              game_id: pitcher.game.id,
-              inning_id: inningId,
-              outs: 0,
-              count: "0-0",
-            }),
-          }
-        );
+        const createResponse = await fetch(API_ENDPOINTS.GAME_STATE, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            game_id: pitcher.game.id,
+            inning_id: inningId,
+            outs: 0,
+            count: "0-0",
+          }),
+        });
 
         if (!createResponse.ok) {
           const errorData = await createResponse.json();
           if (errorData.detail === "Game state already exists for this game") {
-            // If game state was created by another request, fetch it
             const getResponse = await fetch(
-              `http://localhost:8000/api/v1/game-state/${pitcher.game.id}`
+              `${API_ENDPOINTS.GAME_STATE}/${pitcher.game.id}`
             );
             if (getResponse.ok) {
               const gameState = await getResponse.json();
@@ -521,7 +499,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
   const updateGameState = async (newCount, newOuts, newInningId) => {
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/game-state/${pitcher.game.id}`,
+        `${API_ENDPOINTS.GAME_STATE}/${pitcher.game.id}`,
         {
           method: "PUT",
           headers: {
@@ -557,24 +535,20 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
 
   const advanceInning = async () => {
     try {
-      // Create the next inning
-      const createInningResponse = await fetch(
-        "http://localhost:8000/api/v1/innings",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            game_id: pitcher.game.id,
-            inning_number:
-              currentInning.half === "top"
-                ? currentInning.inning_number
-                : currentInning.inning_number + 1,
-            half: currentInning.half === "top" ? "bottom" : "top",
-          }),
-        }
-      );
+      const createInningResponse = await fetch(API_ENDPOINTS.INNINGS, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          game_id: pitcher.game.id,
+          inning_number:
+            currentInning.half === "top"
+              ? currentInning.inning_number
+              : currentInning.inning_number + 1,
+          half: currentInning.half === "top" ? "bottom" : "top",
+        }),
+      });
 
       if (!createInningResponse.ok) {
         throw new Error("Failed to create next inning");
@@ -606,9 +580,8 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
       setLoading(true);
       setError(null);
 
-      // Get the last pitch for this pitcher in this game to determine sequence number
       const lastPitchResponse = await fetch(
-        `http://localhost:8000/api/v1/pitches/pitcher/${pitcher.id}?limit=1`
+        `${API_ENDPOINTS.PITCHES}/pitcher/${pitcher.id}?limit=1`
       );
       if (!lastPitchResponse.ok) throw new Error("Failed to fetch last pitch");
       const lastPitches = await lastPitchResponse.json();
@@ -634,7 +607,7 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
       };
 
       console.log("Logging pitch:", requestBody);
-      const response = await fetch("http://localhost:8000/api/v1/pitches", {
+      const response = await fetch(API_ENDPOINTS.PITCHES, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -661,35 +634,35 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
         hitter_handedness: formData.hitter_handedness,
       });
 
-      // Calculate new count and outs
-      const [balls, strikes] = count.split("-").map(Number);
+      // Update count and outs based on pitch result
       let newCount = count;
       let newOuts = outs;
       let newInningId = currentInning.id;
 
-      if (formData.pitch_result === PITCH_RESULTS.BALL) {
-        if (balls + 1 >= 4) {
-          newCount = "0-0"; // Walk
-        } else {
-          newCount = `${balls + 1}-${strikes}`;
-        }
-      } else if (
-        [PITCH_RESULTS.SWINGING_STRIKE, PITCH_RESULTS.CALLED_STRIKE].includes(
-          formData.pitch_result
-        )
+      if (
+        formData.pitch_result === PITCH_RESULTS.SWINGING_STRIKE ||
+        formData.pitch_result === PITCH_RESULTS.CALLED_STRIKE
       ) {
-        if (strikes + 1 >= 3) {
-          newCount = "0-0"; // Strikeout
+        const [balls, strikes] = count.split("-").map(Number);
+        if (strikes < 2) {
+          newCount = `${balls}-${strikes + 1}`;
+        } else {
+          newCount = "0-0";
           newOuts = (outs + 1) % 3;
           if (newOuts === 0) {
-            // Advance inning
             const newInning = await advanceInning();
             newInningId = newInning.id;
           }
+        }
+      } else if (formData.pitch_result === PITCH_RESULTS.BALL) {
+        const [balls, strikes] = count.split("-").map(Number);
+        if (balls < 3) {
+          newCount = `${balls + 1}-${strikes}`;
         } else {
-          newCount = `${balls}-${strikes + 1}`;
+          newCount = "0-0";
         }
       } else if (formData.pitch_result === PITCH_RESULTS.FOUL) {
+        const [balls, strikes] = count.split("-").map(Number);
         if (strikes < 2) {
           newCount = `${balls}-${strikes + 1}`;
         }
@@ -698,7 +671,6 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
           newCount = "0-0";
           newOuts = (outs + 1) % 3;
           if (newOuts === 0) {
-            // Advance inning
             const newInning = await advanceInning();
             newInningId = newInning.id;
           }
@@ -712,7 +684,6 @@ function PitchLogging({ pitcher: initialPitcher, onPitcherChange }) {
           newCount = "0-0";
           newOuts = (outs + 1) % 3;
           if (newOuts === 0) {
-            // Advance inning
             const newInning = await advanceInning();
             newInningId = newInning.id;
           }

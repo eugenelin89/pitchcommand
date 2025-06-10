@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { API_ENDPOINTS } from "../config/api";
 
 function SessionSummary() {
   const { pitcherId } = useParams();
@@ -14,11 +15,13 @@ function SessionSummary() {
 
   const fetchSummary = async () => {
     try {
-      const response = await fetch(`/api/v1/pitches/pitcher/${pitcherId}/summary`);
+      const response = await fetch(
+        `${API_ENDPOINTS.PITCHES}/pitcher/${pitcherId}/summary`
+      );
       const data = await response.json();
       setSummary(data);
     } catch (error) {
-      console.error('Error fetching summary:', error);
+      console.error("Error fetching summary:", error);
     } finally {
       setLoading(false);
     }
@@ -40,13 +43,16 @@ function SessionSummary() {
     );
   }
 
-  const totalPitches = Object.values(summary.pitch_distribution).reduce((a, b) => a + b, 0);
+  const totalPitches = Object.values(summary.pitch_distribution).reduce(
+    (a, b) => a + b,
+    0
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate('/log')}
+          onClick={() => navigate("/log")}
           className="btn btn-secondary flex items-center gap-2"
         >
           <ArrowLeftIcon className="h-5 w-5" />
@@ -94,4 +100,4 @@ function SessionSummary() {
   );
 }
 
-export default SessionSummary; 
+export default SessionSummary;
